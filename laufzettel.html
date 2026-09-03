@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Laufzettel · Dreikampf</title>
+<style>
+  :root{
+    --bg: #0F1626;
+    --surface: #171F33;
+    --surface-2: #202B45;
+    --surface-3: #2A3654;
+    --line: #2E3A57;
+    --white: #FBFBFD;
+    --muted: #8B93AC;
+    --muted-2: #626C89;
+    --accent: #FF5A36;
+    --accent-dark: #E0431F;
+    --accent-ink: #2A0D05;
+    --success: #2FBF71;
+    --success-bg: rgba(47,191,113,0.14);
+    --warning: #F2A93B;
+    --warning-bg: rgba(242,169,59,0.14);
+    --danger: #FF6161;
+    --danger-bg: rgba(255,97,97,0.14);
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --nav-h: 74px;
+    --header-h: 56px;
+    font-size: 16px;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--white);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: contain;
+  }
+  button, input, select{ font-family: inherit; }
+  input:focus, button:focus, select:focus, [tabindex]:focus{
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  #app{
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100%;
+    position: relative;
+    display:flex;
+    flex-direction: column;
+    background: var(--bg);
+  }
+
+  /* ---------- App header ---------- */
+  .appbar{
+    position: sticky; top:0; z-index: 20;
+    height: var(--header-h);
+    display:flex; align-items:center; gap:10px;
+    padding: 0 14px;
+    background: rgba(15,22,38,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .appbar-back{
+    width:38px; height:38px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    background: var(--surface-2); border:none; color: var(--white);
+    font-size:18px; cursor:pointer;
+  }
+  .appbar-title{
+    font-weight:800; font-size:1.05rem; letter-spacing:-0.01em;
+    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .appbar-spacer{ width:38px; }
+
+  /* ---------- Content ---------- */
+  .screen{
+    flex:1;
+    padding: 18px 16px calc(var(--nav-h) + 24px);
+    animation: fade-in .16s ease-out;
+  }
+  @keyframes fade-in{ from{opacity:0; transform: translateY(4px);} to{opacity:1; transform:none;} }
+
+  .page-title{
+    font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em;
+    margin: 4px 0 4px;
+  }
+  .page-sub{
+    color: var(--muted); font-size: 0.92rem; margin: 0 0 18px;
+    line-height:1.45;
+  }
+
+  /* ---------- Hero (home) ---------- */
+  .hero{
+    position: relative;
+    border-radius: var(--radius-lg);
+    padding: 22px 18px 20px;
+    background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface) 70%);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .hero::after{
+    content:"";
+    position:absolute; right:-40px; top:-40px; width:160px; height:160px;
+    background: repeating-linear-gradient(-35deg, var(--accent) 0 6px, transparent 6px 18px);
+    opacity: 0.16;
+    border-radius: 50%;
+  }
+  .hero-eyebrow{ color: var(--accent); font-weight:700; font-size:0.82rem; position:relative; }
+  .hero-title{ font-size:1.5rem; font-weight:800; letter-spacing:-0.02em; margin:4px 0 8px; position:relative; }
+  .hero-stats{ display:flex; gap:18px; margin-top:14px; position:relative; }
+  .hero-stat b{ display:block; font-size:1.5rem; font-weight:800; }
+  .hero-stat span{ display:block; color:var(--muted); font-size:0.78rem; margin-top:2px; }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    appearance:none; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-weight:700; font-size:1rem;
+    border-radius: var(--radius-md);
+    padding: 15px 18px;
+    width:100%;
+    min-height: 52px;
+    transition: transform .08s ease, opacity .12s ease;
+  }
+  .btn:active{ transform: scale(0.98); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; }
+  .btn-primary{ background: var(--accent); color:#1A0800; }
+  .btn-primary:not(:disabled):hover{ background: var(--accent-dark); }
+  .btn-secondary{ background: var(--surface-2); color: var(--white); border:1px solid var(--line); }
+  .btn-ghost{ background: transparent; color: var(--muted); }
+  .btn-danger-outline{ background: transparent; color: var(--danger); border:1px solid rgba(255,97,97,0.4); }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn{ width:auto; flex:1; }
+
+  /* ---------- Cards / list ---------- */
+  .card{
+    background: var(--surface); border:1px solid var(--line);
+    border-radius: var(--radius-lg); padding:16px;
+  }
+  .stack > * + *{ margin-top:12px; }
+
+  .participant-card{
+    background: var(--surface); border:1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding:14px 14px 14px 16px;
+    display:flex; align-items:center; gap:12px;
+    cursor:pointer; text-align:left; width:100%; color:inherit;
+    border-left: 4px solid var(--muted-2);
+  }
+  .participant-card.status-offen{ border-left-color: var(--muted-2); }
+  .participant-card.status-in_bearbeitung{ border-left-color: var(--warning); }
+  .participant-card.status-abgeschlossen{ border-left-color: var(--success); }
+
+  .participant-avatar{
+    width:44px; height:44px; border-radius:50%;
+    background: var(--surface-3); display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:0.95rem; flex-shrink:0; color:var(--white);
+  }
+  .participant-main{ flex:1; min-width:0; }
+  .participant-name{ font-weight:700; font-size:1rem; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
+  .participant-meta{ color:var(--muted); font-size:0.82rem; margin-top:2px; }
+  .participant-disciplines{ display:flex; gap:6px; margin-top:8px; }
+  .disc-dot{
+    width:8px; height:8px; border-radius:50%;
+    background: var(--muted-2);
+  }
+  .disc-dot.done{ background: var(--success); }
+  .participant-chevron{ color: var(--muted-2); font-size:1.2rem; flex-shrink:0; }
+
+  .empty-state{
+    text-align:center; padding: 46px 20px; color:var(--muted);
+    border:1px dashed var(--line); border-radius: var(--radius-lg);
+  }
+  .empty-state-icon{ font-size:2.2rem; margin-bottom:10px; }
+  .empty-state-title{ color:var(--white); font-weight:700; margin-bottom:4px; }
+
+  /* ---------- Status pill ---------- */
+  .pill{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:0.76rem; font-weight:700; padding:4px 10px; border-radius:999px;
+    white-space:nowrap;
+  }
+  .pill-offen{ background: var(--surface-3); color: var(--muted); }
+  .pill-in_bearbeitung{ background: var(--warning-bg); color: var(--warning); }
+  .pill-abgeschlossen{ background: var(--success-bg); color: var(--success); }
+
+  /* ---------- Forms ---------- */
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:0.85rem; font-weight:700; color:var(--muted); margin-bottom:7px; }
+  .field-hint{ font-size:0.78rem; color:var(--muted-2); margin-top:6px; }
+  .field-error{ font-size:0.82rem; color:var(--danger); margin-top:7px; display:flex; gap:6px; align-items:flex-start; }
+  input[type="text"], input[type="number"], select{
+    width:100%; background: var(--surface-2); border:1px solid var(--line);
+    color: var(--white); border-radius: var(--radius-md); padding:14px 14px;
+    font-size:1rem; font-weight:600;
+  }
+  input[type="text"]::placeholder, input[type="number"]::placeholder{ color: var(--muted-2); font-weight:500; }
+  .field.invalid input{ border-color: var(--danger); background: var(--danger-bg); }
+
+  .time-row{ display:flex; align-items:flex-end; gap:8px; }
+  .time-field{ flex:1; min-width:0; }
+  .time-field input{ text-align:center; font-size:1.2rem; letter-spacing:0.02em; }
+  .time-field span{ display:block; text-align:center; font-size:0.72rem; color:var(--muted-2); margin-top:5px; }
+  .time-sep{ padding-bottom:14px; font-size:1.3rem; font-weight:800; color:var(--muted-2); }
+
+  /* ---------- Discipline selection ---------- */
+  .category-block{ margin-bottom:22px; }
+  .category-head{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .category-icon{ font-size:1.3rem; }
+  .category-name{ font-weight:800; font-size:1.02rem; }
+  .category-required{ margin-left:auto; font-size:0.75rem; color:var(--muted-2); }
+  .option-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .option-card{
+    background: var(--surface); border:1.5px solid var(--line); border-radius: var(--radius-md);
+    padding:14px 10px; text-align:center; cursor:pointer; color:var(--white);
+    font-weight:700; font-size:0.94rem; min-height:56px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .option-card.selected{
+    border-color: var(--accent); background: rgba(255,90,54,0.14); color: var(--accent);
+  }
+
+  /* ---------- Laufzettel (participant detail) ---------- */
+  .lz-header{
+    background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-lg);
+    padding:18px; margin-bottom:18px;
+  }
+  .lz-name{ font-size:1.35rem; font-weight:800; letter-spacing:-0.01em; }
+  .lz-meta{ color:var(--muted); font-size:0.86rem; margin-top:3px; }
+  .progress-track{
+    height:8px; border-radius:999px; background: var(--surface-3); margin-top:16px; overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; background: var(--accent); border-radius:999px;
+    transition: width .25s ease;
+  }
+  .progress-label{ margin-top:8px; font-size:0.82rem; color:var(--muted); display:flex; justify-content:space-between; }
+
+  .discipline-card{
+    width:100%; text-align:left; cursor:pointer; border:none;
+    background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-lg);
+    padding:16px; display:flex; align-items:center; gap:14px; color:inherit;
+  }
+  .discipline-icon{
+    width:46px; height:46px; border-radius:12px; background: var(--surface-2);
+    display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0;
+  }
+  .discipline-card.done .discipline-icon{ background: var(--success-bg); }
+  .discipline-info{ flex:1; min-width:0; }
+  .discipline-cat{ font-size:0.76rem; color:var(--muted); font-weight:700; text-transform: none; }
+  .discipline-type{ font-weight:800; font-size:1.02rem; margin-top:1px; }
+  .discipline-result{ font-size:0.9rem; color:var(--success); font-weight:700; margin-top:3px; }
+  .discipline-status-icon{ font-size:1.3rem; flex-shrink:0; }
+
+  /* ---------- Attempts ---------- */
+  .attempt-row{
+    display:flex; align-items:center; gap:10px; margin-bottom:10px;
+    background: var(--surface-2); border:1px solid var(--line); border-radius: var(--radius-md);
+    padding:10px 12px;
+  }
+  .attempt-label{ font-weight:700; color:var(--muted); font-size:0.85rem; width:64px; flex-shrink:0; }
+  .attempt-input{ flex:1; }
+  .attempt-input input{ padding:10px 12px; font-size:1rem; }
+  .attempt-invalid-toggle{
+    flex-shrink:0; width:40px; height:40px; border-radius:10px; border:1px solid var(--line);
+    background: var(--surface-3); color:var(--muted); font-size:1.1rem; cursor:pointer;
+  }
+  .attempt-invalid-toggle.on{ background: var(--danger-bg); color: var(--danger); border-color: rgba(255,97,97,0.4); }
+  .best-banner{
+    background: var(--success-bg); color: var(--success); border-radius: var(--radius-md);
+    padding:12px 14px; font-weight:700; font-size:0.92rem; margin-top:4px; margin-bottom:18px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .best-banner.empty{ background: var(--surface-2); color: var(--muted); font-weight:600; }
+
+  /* ---------- Summary table ---------- */
+  .summary-table{ width:100%; border-collapse: collapse; }
+  .summary-table th{
+    text-align:left; font-size:0.76rem; color:var(--muted); font-weight:700;
+    padding:0 4px 8px; border-bottom:1px solid var(--line);
+  }
+  .summary-table td{
+    padding:12px 4px; border-bottom:1px solid var(--line); font-size:0.95rem;
+  }
+  .summary-table tr:last-child td{ border-bottom:none; }
+  .summary-table td.result{ font-weight:800; text-align:right; }
+  .summary-check{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background: var(--success-bg); color:var(--success); font-weight:800;
+    border-radius: var(--radius-md); padding:14px; margin-top:16px;
+  }
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed; left:50%; bottom: calc(var(--nav-h) + 14px);
+    transform: translate(-50%, 8px);
+    background: var(--surface-3); color:var(--white); border:1px solid var(--line);
+    padding:11px 18px; border-radius:999px; font-size:0.88rem; font-weight:600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    z-index: 60; opacity:0; pointer-events:none;
+    transition: opacity .18s ease, transform .18s ease;
+    max-width: calc(100% - 40px);
+  }
+  .toast.show{ opacity:1; transform: translate(-50%, 0); pointer-events:auto; }
+
+  /* ---------- Bottom nav ---------- */
+  .bottom-nav{
+    position: sticky; bottom:0; z-index:20;
+    height: var(--nav-h);
+    display:flex; align-items:stretch;
+    background: rgba(15,22,38,0.96); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-item{
+    flex:1; border:none; background:transparent; color:var(--muted-2);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    font-size:0.72rem; font-weight:700; cursor:pointer; padding-top:6px;
+  }
+  .nav-item .nav-icon{ font-size:1.3rem; line-height:1; }
+  .nav-item.active{ color: var(--accent); }
+  .nav-item:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  /* Sticky footer action bar within a screen (used on selection/forms) */
+  .footer-actions{
+    position: sticky; bottom: var(--nav-h);
+    background: linear-gradient(180deg, transparent, var(--bg) 30%);
+    padding: 18px 0 4px; margin-top: 4px;
+  }
+
+  .visually-hidden{
+    position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="appbar" id="appbar"></header>
+  <main class="screen" id="screen" role="main"></main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <nav class="bottom-nav" id="bottomnav" aria-label="Hauptnavigation"></nav>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     DATENMODELL & KONSTANTEN
+  ========================================================= */
+  var STORAGE_KEY = "laufzettel_participants_v1";
+  var ACTIVE_KEY = "laufzettel_active_id_v1";
+
+  var RUNNING = [
+    { id:"100",  label:"100 m",  kind:"short" },
+    { id:"200",  label:"200 m",  kind:"short" },
+    { id:"400",  label:"400 m",  kind:"short" },
+    { id:"800",  label:"800 m",  kind:"long" },
+    { id:"5000", label:"5000 m", kind:"long" }
+  ];
+  var JUMPING = [
+    { id:"hoch", label:"Hochsprung", unitLabel:"Höhe" },
+    { id:"weit", label:"Weitsprung",  unitLabel:"Weite" }
+  ];
+  var THROWING = [
+    { id:"diskus", label:"Diskus" },
+    { id:"kugel",  label:"Kugel" },
+    { id:"speer",  label:"Speer" }
+  ];
+  var CATEGORY_META = {
+    running:  { icon:"🏃", name:"Laufen",  list: RUNNING },
+    jumping:  { icon:"🦘", name:"Springen", list: JUMPING },
+    throwing: { icon:"🥎", name:"Werfen",   list: THROWING }
+  };
+  var CATEGORY_ORDER = ["running","jumping","throwing"];
+
+  function findDiscipline(category, id){
+    var list = CATEGORY_META[category].list;
+    for (var i=0;i<list.length;i++){ if (list[i].id === id) return list[i]; }
+    return null;
+  }
+
+  /* =========================================================
+     STATE
+  ========================================================= */
+  var state = {
+    participants: [],
+    view: "home",              // home | newParticipant | disciplineSelect | laufzettel | disciplineForm | summary
+    activeParticipantId: null,
+    formCategory: null,        // aktuelle Kategorie im Eingabeformular
+    draft: null                // temporäre Daten für Formulare
+  };
+
+  function uid(){
+    return "p_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+  }
+
+  function loadParticipants(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      state.participants = raw ? JSON.parse(raw) : [];
+    }catch(e){
+      state.participants = [];
+    }
+    try{
+      state.activeParticipantId = localStorage.getItem(ACTIVE_KEY) || null;
+    }catch(e){ state.activeParticipantId = null; }
+  }
+
+  function saveParticipants(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.participants));
+    }catch(e){
+      showToast("Speichern fehlgeschlagen. Bitte Speicherplatz prüfen.");
+    }
+  }
+
+  function setActiveParticipant(id){
+    state.activeParticipantId = id;
+    try{ localStorage.setItem(ACTIVE_KEY, id || ""); }catch(e){}
+  }
+
+  function getParticipant(id){
+    for (var i=0;i<state.participants.length;i++){
+      if (state.participants[i].id === id) return state.participants[i];
+    }
+    return null;
+  }
+
+  function newAttempts(){ return [ {value:null, invalid:false}, {value:null, invalid:false}, {value:null, invalid:false} ]; }
+
+  function createParticipant(data){
+    return {
+      id: uid(),
+      firstName: data.firstName,
+      lastName: data.lastName,
+      startNumber: data.startNumber || "",
+      club: data.club || "",
+      ageGroup: data.ageGroup || "",
+      disciplines: {
+        running:  { type:null, result:null, resultDisplay:null, completed:false },
+        jumping:  { type:null, attempts: newAttempts(), bestResult:null, completed:false },
+        throwing: { type:null, attempts: newAttempts(), bestResult:null, completed:false }
+      },
+      status: "offen",
+      createdAt: Date.now()
+    };
+  }
+
+  function computeStatus(p){
+    var done = 0;
+    CATEGORY_ORDER.forEach(function(cat){ if (p.disciplines[cat].completed) done++; });
+    if (done === 0) return "offen";
+    if (done === 3) return "abgeschlossen";
+    return "in_bearbeitung";
+  }
+
+  function completedCount(p){
+    var n = 0;
+    CATEGORY_ORDER.forEach(function(cat){ if (p.disciplines[cat].completed) n++; });
+    return n;
+  }
+
+  function refreshStatus(p){
+    p.status = computeStatus(p);
+  }
+
+  /* =========================================================
+     FORMAT-HILFEN
+  ========================================================= */
+  function fmtDecimal2(n){
+    return n.toFixed(2).replace(".", ",");
+  }
+
+  function formatRunningResult(kind, seconds){
+    if (seconds == null) return null;
+    if (kind === "short"){
+      return fmtDecimal2(seconds) + " s";
+    } else {
+      var m = Math.floor(seconds / 60);
+      var s = seconds - m*60;
+      var sStr = s.toFixed(2).replace(".", ",");
+      if (s < 10) sStr = "0" + sStr;
+      return m + ":" + sStr;
+    }
+  }
+
+  function formatMeters(n){
+    if (n == null) return null;
+    return fmtDecimal2(n) + " m";
+  }
+
+  function bestAttempt(attempts){
+    var best = null;
+    attempts.forEach(function(a){
+      if (!a.invalid && typeof a.value === "number" && !isNaN(a.value)){
+        if (best === null || a.value > best) best = a.value;
+      }
+    });
+    return best;
+  }
+
+  function initials(p){
+    var a = (p.firstName || "").charAt(0);
+    var b = (p.lastName || "").charAt(0);
+    return (a+b).toUpperCase() || "?";
+  }
+
+  /* =========================================================
+     TOAST
+  ========================================================= */
+  var toastTimer = null;
+  function showToast(msg){
+    var el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 2400);
+  }
+
+  /* =========================================================
+     NAVIGATION
+  ========================================================= */
+  function goHome(){
+    state.view = "home";
+    render();
+  }
+  function goNewParticipant(){
+    state.view = "newParticipant";
+    state.draft = { firstName:"", lastName:"", startNumber:"", club:"", ageGroup:"" };
+    render();
+  }
+  function goDisciplineSelect(participantId){
+    state.view = "disciplineSelect";
+    state.activeParticipantId = participantId;
+    var p = getParticipant(participantId);
+    state.draft = {
+      running: p.disciplines.running.type,
+      jumping: p.disciplines.jumping.type,
+      throwing: p.disciplines.throwing.type
+    };
+    render();
+  }
+  function goLaufzettel(participantId){
+    setActiveParticipant(participantId);
+    state.view = "laufzettel";
+    render();
+  }
+  function goDisciplineForm(category){
+    state.view = "disciplineForm";
+    state.formCategory = category;
+    var p = getParticipant(state.activeParticipantId);
+    var d = p.disciplines[category];
+    if (category === "running"){
+      var kind = findDiscipline("running", d.type).kind;
+      var min=0, sec=0, hun=0;
+      if (typeof d.result === "number"){
+        if (kind === "short"){
+          sec = Math.floor(d.result);
+          hun = Math.round((d.result - sec) * 100);
+        } else {
+          min = Math.floor(d.result/60);
+          var rem = d.result - min*60;
+          sec = Math.floor(rem);
+          hun = Math.round((rem - sec)*100);
+        }
+      }
+      state.draft = { min:min, sec:sec, hun:hun, error:null };
+    } else {
+      state.draft = { attempts: JSON.parse(JSON.stringify(d.attempts)), error:null };
+    }
+    render();
+  }
+  function goSummary(participantId){
+    state.view = "summary";
+    state.activeParticipantId = participantId;
+    render();
+  }
+
+  /* =========================================================
+     RENDER: APPBAR
+  ========================================================= */
+  function renderAppbar(){
+    var bar = document.getElementById("appbar");
+    var title = "";
+    var showBack = false;
+    var onBack = goHome;
+
+    if (state.view === "home"){ title = "Teilnehmer"; }
+    else if (state.view === "newParticipant"){ title = "Neuer Teilnehmer"; showBack = true; onBack = goHome; }
+    else if (state.view === "disciplineSelect"){ title = "Disziplinen wählen"; showBack = true; onBack = goHome; }
+    else if (state.view === "laufzettel"){
+      var p = getParticipant(state.activeParticipantId);
+      title = p ? (p.firstName + " " + p.lastName) : "Laufzettel";
+      showBack = true; onBack = goHome;
+    }
+    else if (state.view === "disciplineForm"){
+      title = CATEGORY_META[state.formCategory].name;
+      showBack = true;
+      onBack = function(){ goLaufzettel(state.activeParticipantId); };
+    }
+    else if (state.view === "summary"){
+      title = "Zusammenfassung"; showBack = true;
+      onBack = function(){ goLaufzettel(state.activeParticipantId); };
+    }
+
+    bar.innerHTML = "";
+    if (showBack){
+      var btn = document.createElement("button");
+      btn.className = "appbar-back";
+      btn.setAttribute("aria-label","Zurück");
+      btn.textContent = "←";
+      btn.addEventListener("click", onBack);
+      bar.appendChild(btn);
+    } else {
+      var spacer = document.createElement("div");
+      spacer.className = "appbar-spacer";
+      bar.appendChild(spacer);
+    }
+    var t = document.createElement("div");
+    t.className = "appbar-title";
+    t.textContent = title;
+    bar.appendChild(t);
+    var spacer2 = document.createElement("div");
+    spacer2.className = "appbar-spacer";
+    bar.appendChild(spacer2);
+  }
+
+  /* =========================================================
+     RENDER: BOTTOM NAV
+  ========================================================= */
+  function renderBottomNav(){
+    var nav = document.getElementById("bottomnav");
+    nav.innerHTML = "";
+
+    var items = [
+      { key:"home", icon:"👥", label:"Teilnehmer", onClick: goHome, active: state.view === "home" },
+      { key:"new",  icon:"➕", label:"Neu", onClick: goNewParticipant, active: state.view === "newParticipant" },
+      { key:"active", icon:"📋", label:"Aktuell",
+        onClick: function(){ if (state.activeParticipantId) goLaufzettel(state.activeParticipantId); },
+        active: state.view === "laufzettel" || state.view === "disciplineForm" || state.view === "summary" || state.view === "disciplineSelect",
+        disabled: !state.activeParticipantId
+      }
+    ];
+
+    items.forEach(function(it){
+      var b = document.createElement("button");
+      b.className = "nav-item" + (it.active ? " active" : "");
+      if (it.disabled) b.disabled = true;
+      b.innerHTML = '<span class="nav-icon" aria-hidden="true">' + it.icon + '</span><span>' + it.label + '</span>';
+      b.addEventListener("click", it.onClick);
+      nav.appendChild(b);
+    });
+  }
+
+  /* =========================================================
+     RENDER: HOME
+  ========================================================= */
+  function renderHome(){
+    var el = document.getElementById("screen");
+    var total = state.participants.length;
+    var done = state.participants.filter(function(p){ return p.status === "abgeschlossen"; }).length;
+
+    var html = "";
+    html += '<div class="hero">';
+    html += '  <div class="hero-eyebrow">Dreikampf · Laufzettel</div>';
+    html += '  <div class="hero-title">Wer tritt heute an?</div>';
+    html += '  <div class="hero-stats">';
+    html += '    <div class="hero-stat"><b>' + total + '</b><span>Teilnehmer</span></div>';
+    html += '    <div class="hero-stat"><b>' + done + '</b><span>Abgeschlossen</span></div>';
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<button class="btn btn-primary" id="btn-add-top">＋ Neuen Teilnehmer anlegen</button>';
+
+    html += '<div class="stack" style="margin-top:20px;" id="participant-list"></div>';
+
+    el.innerHTML = html;
+
+    document.getElementById("btn-add-top").addEventListener("click", goNewParticipant);
+
+    var listEl = document.getElementById("participant-list");
+    if (state.participants.length === 0){
+      listEl.innerHTML =
+        '<div class="empty-state">' +
+        '  <div class="empty-state-icon">🏟️</div>' +
+        '  <div class="empty-state-title">Noch keine Teilnehmer</div>' +
+        '  <div>Lege den ersten Teilnehmer an, um loszulegen.</div>' +
+        '</div>';
+      return;
+    }
+
+    var sorted = state.participants.slice().sort(function(a,b){ return b.createdAt - a.createdAt; });
+
+    sorted.forEach(function(p){
+      var card = document.createElement("button");
+      card.className = "participant-card status-" + p.status;
+      card.setAttribute("type","button");
+
+      var dots = CATEGORY_ORDER.map(function(cat){
+        var d = p.disciplines[cat];
+        return '<span class="disc-dot' + (d.completed ? ' done' : '') + '" title="' + CATEGORY_META[cat].name + (d.completed ? ' erledigt' : ' offen') + '"></span>';
+      }).join("");
+
+      var metaParts = [];
+      if (p.startNumber) metaParts.push("Nr. " + escapeHtml(p.startNumber));
+      metaParts.push(completedCount(p) + "/3 abgeschlossen");
+      var meta = metaParts.join(" · ");
+
+      var pillLabel = p.status === "offen" ? "Offen" : (p.status === "in_bearbeitung" ? "In Bearbeitung" : "Fertig");
+
+      card.innerHTML =
+        '<div class="participant-avatar">' + initials(p) + '</div>' +
+        '<div class="participant-main">' +
+        '  <div class="participant-name">' + escapeHtml(p.firstName + " " + p.lastName) + '</div>' +
+        '  <div class="participant-meta">' + meta + '</div>' +
+        '  <div class="participant-disciplines">' + dots + '</div>' +
+        '</div>' +
+        '<span class="pill pill-' + p.status + '">' + pillLabel + '</span>' +
+        '<span class="participant-chevron" aria-hidden="true">›</span>';
+
+      card.addEventListener("click", function(){
+        var hasAllTypes = p.disciplines.running.type && p.disciplines.jumping.type && p.disciplines.throwing.type;
+        if (!hasAllTypes){
+          goDisciplineSelect(p.id);
+        } else {
+          goLaufzettel(p.id);
+        }
+      });
+
+      listEl.appendChild(card);
+    });
+  }
+
+  /* =========================================================
+     RENDER: NEW PARTICIPANT
+  ========================================================= */
+  function renderNewParticipant(){
+    var el = document.getElementById("screen");
+    var d = state.draft;
+
+    var html = "";
+    html += '<p class="page-sub">Erfasse den Teilnehmer. Vorname und Nachname sind Pflicht, der Rest ist optional und kann später ergänzt werden.</p>';
+    html += '<div class="stack">';
+
+    html += field("firstName", "Vorname", "text", d.firstName, "z. B. Max", {required:true});
+    html += field("lastName", "Nachname", "text", d.lastName, "z. B. Mustermann", {required:true});
+    html += field("startNumber", "Startnummer (optional)", "text", d.startNumber, "z. B. 123", {numericKeyboard:true});
+    html += field("club", "Verein / Schule (optional)", "text", d.club, "z. B. TV Musterstadt");
+    html += field("ageGroup", "Jahrgang / Altersklasse (optional)", "text", d.ageGroup, "z. B. U16 oder 2011");
+
+    html += '</div>';
+    html += '<div id="form-error"></div>';
+    html += '<div class="footer-actions">';
+    html += '  <button class="btn btn-primary" id="btn-continue">Weiter zur Disziplinenauswahl →</button>';
+    html += '</div>';
+
+    el.innerHTML = html;
+
+    ["firstName","lastName","startNumber","club","ageGroup"].forEach(function(key){
+      document.getElementById("f-" + key).addEventListener("input", function(e){
+        state.draft[key] = e.target.value;
+      });
+    });
+
+    document.getElementById("btn-continue").addEventListener("click", function(){
+      var errEl = document.getElementById("form-error");
+      var fn = state.draft.firstName.trim();
+      var ln = state.draft.lastName.trim();
+      if (!fn || !ln){
+        errEl.innerHTML = '<div class="field-error">⚠️ Bitte gib Vorname und Nachname ein.</div>';
+        return;
+      }
+      var p = createParticipant({
+        firstName: fn, lastName: ln,
+        startNumber: state.draft.startNumber.trim(),
+        club: state.draft.club.trim(),
+        ageGroup: state.draft.ageGroup.trim()
+      });
+      state.participants.push(p);
+      saveParticipants();
+      showToast("Teilnehmer angelegt");
+      goDisciplineSelect(p.id);
+    });
+  }
+
+  function field(key, label, type, value, placeholder, opts){
+    opts = opts || {};
+    var inputmode = opts.numericKeyboard ? ' inputmode="numeric"' : "";
+    return (
+      '<div class="field">' +
+      '  <label for="f-' + key + '">' + label + '</label>' +
+      '  <input id="f-' + key + '" type="' + type + '" value="' + escapeAttr(value || "") + '" placeholder="' + escapeAttr(placeholder || "") + '"' + inputmode + '>' +
+      '</div>'
+    );
+  }
+
+  /* =========================================================
+     RENDER: DISCIPLINE SELECT
+  ========================================================= */
+  function renderDisciplineSelect(){
+    var el = document.getElementById("screen");
+    var p = getParticipant(state.activeParticipantId);
+    if (!p){ goHome(); return; }
+
+    var html = "";
+    html += '<p class="page-sub">Wähle für ' + escapeHtml(p.firstName) + ' aus jedem Bereich genau eine Disziplin aus.</p>';
+
+    CATEGORY_ORDER.forEach(function(cat){
+      var meta = CATEGORY_META[cat];
+      html += '<div class="category-block">';
+      html += '  <div class="category-head">';
+      html += '    <span class="category-icon" aria-hidden="true">' + meta.icon + '</span>';
+      html += '    <span class="category-name">' + meta.name + '</span>';
+      html += '    <span class="category-required">' + (state.draft[cat] ? "✓ gewählt" : "Pflicht") + '</span>';
+      html += '  </div>';
+      html += '  <div class="option-grid">';
+      meta.list.forEach(function(discipline){
+        var selected = state.draft[cat] === discipline.id;
+        html += '<button type="button" class="option-card' + (selected ? ' selected' : '') + '" data-cat="' + cat + '" data-id="' + discipline.id + '">' + discipline.label + '</button>';
+      });
+      html += '  </div>';
+      html += '</div>';
+    });
+
+    var allSelected = CATEGORY_ORDER.every(function(cat){ return !!state.draft[cat]; });
+
+    html += '<div class="footer-actions">';
+    html += '  <button class="btn btn-primary" id="btn-confirm-disciplines"' + (allSelected ? "" : " disabled") + '>Speichern &amp; weiter →</button>';
+    html += '</div>';
+
+    el.innerHTML = html;
+
+    el.querySelectorAll(".option-card").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var cat = btn.getAttribute("data-cat");
+        var id = btn.getAttribute("data-id");
+        state.draft[cat] = id;
+        renderDisciplineSelect();
+      });
+    });
+
+    var confirmBtn = document.getElementById("btn-confirm-disciplines");
+    if (confirmBtn){
+      confirmBtn.addEventListener("click", function(){
+        if (confirmBtn.disabled) return;
+        CATEGORY_ORDER.forEach(function(cat){
+          if (p.disciplines[cat].type !== state.draft[cat]){
+            p.disciplines[cat].type = state.draft[cat];
+          }
+        });
+        saveParticipants();
+        showToast("Disziplinen gespeichert");
+        goLaufzettel(p.id);
+      });
+    }
+  }
+
+  /* =========================================================
+     RENDER: LAUFZETTEL (Übersicht Teilnehmer)
+  ========================================================= */
+  function renderLaufzettel(){
+    var el = document.getElementById("screen");
+    var p = getParticipant(state.activeParticipantId);
+    if (!p){ goHome(); return; }
+
+    refreshStatus(p);
+    var done = completedCount(p);
+    var pct = Math.round((done/3)*100);
+
+    var html = "";
+    html += '<div class="lz-header">';
+    html += '  <div class="lz-name">' + escapeHtml(p.firstName + " " + p.lastName) + '</div>';
+    var metaParts = [];
+    if (p.startNumber) metaParts.push("Startnummer " + escapeHtml(p.startNumber));
+    if (p.club) metaParts.push(escapeHtml(p.club));
+    if (p.ageGroup) metaParts.push(escapeHtml(p.ageGroup));
+    html += '  <div class="lz-meta">' + (metaParts.join(" · ") || "Keine weiteren Angaben") + '</div>';
+    html += '  <div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+    html += '  <div class="progress-label"><span>' + done + ' von 3 Disziplinen abgeschlossen</span><span>' + pct + '%</span></div>';
+    html += '</div>';
+
+    html += '<div class="stack">';
+    CATEGORY_ORDER.forEach(function(cat){
+      var meta = CATEGORY_META[cat];
+      var d = p.disciplines[cat];
+      var discipline = d.type ? findDiscipline(cat, d.type) : null;
+      var resultText = null;
+      if (cat === "running" && d.completed){ resultText = d.resultDisplay; }
+      if ((cat === "jumping" || cat === "throwing") && d.completed){ resultText = formatMeters(d.bestResult); }
+
+      html += '<button type="button" class="discipline-card' + (d.completed ? ' done' : '') + '" data-cat="' + cat + '">';
+      html += '  <div class="discipline-icon" aria-hidden="true">' + meta.icon + '</div>';
+      html += '  <div class="discipline-info">';
+      html += '    <div class="discipline-cat">' + meta.name + '</div>';
+      html += '    <div class="discipline-type">' + (discipline ? discipline.label : "—") + '</div>';
+      if (resultText){ html += '    <div class="discipline-result">' + resultText + '</div>'; }
+      html += '  </div>';
+      html += '  <div class="discipline-status-icon" aria-hidden="true">' + (d.completed ? "✅" : "○") + '</div>';
+      html += '</button>';
+    });
+    html += '</div>';
+
+    if (done === 3){
+      html += '<div class="footer-actions">';
+      html += '  <button class="btn btn-primary" id="btn-summary">Zusammenfassung ansehen</button>';
+      html += '</div>';
+    }
+
+    el.innerHTML = html;
+
+    el.querySelectorAll(".discipline-card").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        goDisciplineForm(btn.getAttribute("data-cat"));
+      });
+    });
+
+    var sumBtn = document.getElementById("btn-summary");
+    if (sumBtn) sumBtn.addEventListener("click", function(){ goSummary(p.id); });
+  }
+
+  /* =========================================================
+     RENDER: DISCIPLINE FORM
+  ========================================================= */
+  function renderDisciplineForm(){
+    var el = document.getElementById("screen");
+    var p = getParticipant(state.activeParticipantId);
+    if (!p){ goHome(); return; }
+    var cat = state.formCategory;
+    var d = p.disciplines[cat];
+    var discipline = findDiscipline(cat, d.type);
+
+    if (cat === "running"){
+      renderRunningForm(el, p, d, discipline);
+    } else {
+      renderAttemptsForm(el, p, cat, d, discipline);
+    }
+  }
+
+  function renderRunningForm(el, p, d, discipline){
+    var kind = discipline.kind;
+    var draft = state.draft;
+
+    var html = "";
+    html += '<p class="page-sub">' + discipline.label + ' · Ergebnis von ' + escapeHtml(p.firstName) + ' eintragen.</p>';
+    html += '<div class="card">';
+
+    if (kind === "short"){
+      html += '<div class="time-row">';
+      html += timeField("sec", "Sekunden", draft.sec, 2);
+      html += '<div class="time-sep">,</div>';
+      html += timeField("hun", "Hundertstel", draft.hun, 2);
+      html += '<div class="time-sep" style="padding-bottom:22px;">s</div>';
+      html += '</div>';
+      html += '<div class="field-hint">Beispiel: 12 Sekunden und 43 Hundertstel = 12,43 s</div>';
+    } else {
+      html += '<div class="time-row">';
+      html += timeField("min", "Minuten", draft.min, 2);
+      html += '<div class="time-sep">:</div>';
+      html += timeField("sec", "Sekunden", draft.sec, 2);
+      html += '<div class="time-sep">,</div>';
+      html += timeField("hun", "Hundertstel", draft.hun, 2);
+      html += '</div>';
+      html += '<div class="field-hint">Beispiel: 18 Minuten, 42 Sekunden, 35 Hundertstel = 18:42,35</div>';
+    }
+
+    html += '</div>';
+    html += '<div id="form-error"></div>';
+
+    html += '<div class="footer-actions">';
+    html += '  <div class="btn-row">';
+    if (d.completed){
+      html += '    <button class="btn btn-danger-outline" id="btn-clear">Ergebnis löschen</button>';
+    }
+    html += '    <button class="btn btn-primary" id="btn-save">✓ Disziplin abschließen</button>';
+    html += '  </div>';
+    html += '</div>';
+
+    el.innerHTML = html;
+
+    var fields = kind === "short" ? ["sec","hun"] : ["min","sec","hun"];
+    fields.forEach(function(key){
+      var input = document.getElementById("t-" + key);
+      input.addEventListener("input", function(e){
+        var v = e.target.value.replace(/[^0-9]/g, "");
+        draft[key] = v === "" ? "" : parseInt(v, 10);
+        e.target.value = v;
+      });
+    });
+
+    document.getElementById("btn-save").addEventListener("click", function(){
+      var errEl = document.getElementById("form-error");
+      var sec = draft.sec === "" || draft.sec == null ? 0 : Number(draft.sec);
+      var hun = draft.hun === "" || draft.hun == null ? 0 : Number(draft.hun);
+      var min = kind === "long" ? (draft.min === "" || draft.min == null ? 0 : Number(draft.min)) : 0;
+
+      if (sec > 59 && kind === "long"){
+        errEl.innerHTML = errorMsg("Bitte gib eine gültige Sekundenzahl zwischen 0 und 59 ein.");
+        return;
+      }
+      if (hun > 99){
+        errEl.innerHTML = errorMsg("Bitte gib gültige Hundertstel zwischen 0 und 99 ein.");
+        return;
+      }
+      var totalSeconds = min*60 + sec + hun/100;
+      if (totalSeconds <= 0){
+        errEl.innerHTML = errorMsg("Bitte gib eine gültige Zeit ein, z. B. 12,43 Sekunden.");
+        return;
+      }
+
+      d.result = totalSeconds;
+      d.resultDisplay = formatRunningResult(kind, totalSeconds);
+      d.completed = true;
+      refreshStatus(p);
+      saveParticipants();
+      showToast("Ergebnis gespeichert");
+      goToNextOpenOrLaufzettel(p, "running");
+    });
+
+    var clearBtn = document.getElementById("btn-clear");
+    if (clearBtn){
+      clearBtn.addEventListener("click", function(){
+        d.result = null; d.resultDisplay = null; d.completed = false;
+        refreshStatus(p);
+        saveParticipants();
+        showToast("Ergebnis gelöscht");
+        goDisciplineForm("running");
+      });
+    }
+  }
+
+  function timeField(key, label, value, maxLen){
+    return (
+      '<div class="time-field">' +
+      '  <input id="t-' + key + '" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="' + maxLen + '" value="' + (value === "" || value == null ? "" : value) + '" placeholder="0">' +
+      '  <span>' + label + '</span>' +
+      '</div>'
+    );
+  }
+
+  function renderAttemptsForm(el, p, cat, d, discipline){
+    var meta = CATEGORY_META[cat];
+    var draft = state.draft;
+    var unitWord = cat === "jumping" ? (meta && discipline && discipline.unitLabel === "Höhe" ? "Höhe" : "Weite") : "Weite";
+
+    var html = "";
+    html += '<p class="page-sub">' + discipline.label + ' · bis zu drei Versuche für ' + escapeHtml(p.firstName) + '. Der beste gültige Versuch zählt.</p>';
+
+    draft.attempts.forEach(function(a, idx){
+      html += '<div class="attempt-row">';
+      html += '  <div class="attempt-label">Versuch ' + (idx+1) + '</div>';
+      html += '  <div class="attempt-input">';
+      html += '    <input type="text" inputmode="decimal" data-idx="' + idx + '" class="attempt-value" placeholder="z. B. 5,42" value="' + (a.value == null ? "" : String(a.value).replace(".", ",")) + '" ' + (a.invalid ? "disabled" : "") + '>';
+      html += '  </div>';
+      html += '  <button type="button" class="attempt-invalid-toggle' + (a.invalid ? " on" : "") + '" data-idx="' + idx + '" title="Versuch als ungültig markieren">' + (a.invalid ? "✕" : "—") + '</button>';
+      html += '</div>';
+    });
+
+    html += '<div class="field-hint" style="margin-bottom:14px;">Angabe in Metern mit bis zu zwei Nachkommastellen, z. B. 5,42 m. Ungültige Versuche mit ✕ markieren.</div>';
+
+    var best = bestAttempt(draft.attempts);
+    if (best != null){
+      html += '<div class="best-banner"><span>Bester Versuch (' + unitWord + ')</span><span>' + formatMeters(best) + '</span></div>';
+    } else {
+      html += '<div class="best-banner empty"><span>Noch kein gültiges Ergebnis</span><span>—</span></div>';
+    }
+
+    html += '<div id="form-error"></div>';
+
+    html += '<div class="footer-actions">';
+    html += '  <div class="btn-row">';
+    if (d.completed){
+      html += '    <button class="btn btn-danger-outline" id="btn-clear">Zurücksetzen</button>';
+    }
+    html += '    <button class="btn btn-primary" id="btn-save"' + (best == null ? " disabled" : "") + '>✓ Disziplin abschließen</button>';
+    html += '  </div>';
+    html += '</div>';
+
+    el.innerHTML = html;
+
+    el.querySelectorAll(".attempt-value").forEach(function(input){
+      input.addEventListener("input", function(e){
+        var idx = parseInt(e.target.getAttribute("data-idx"), 10);
+        var raw = e.target.value;
+        draft.attempts[idx].value = parseAttemptValue(raw);
+        refreshAttemptFormBits();
+      });
+    });
+
+    el.querySelectorAll(".attempt-invalid-toggle").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var idx = parseInt(btn.getAttribute("data-idx"), 10);
+        draft.attempts[idx].invalid = !draft.attempts[idx].invalid;
+        renderDisciplineForm();
+      });
+    });
+
+    function refreshAttemptFormBits(){
+      var b = bestAttempt(draft.attempts);
+      var banner = el.querySelector(".best-banner");
+      if (b != null){
+        banner.className = "best-banner";
+        banner.innerHTML = '<span>Bester Versuch (' + unitWord + ')</span><span>' + formatMeters(b) + '</span>';
+      } else {
+        banner.className = "best-banner empty";
+        banner.innerHTML = '<span>Noch kein gültiges Ergebnis</span><span>—</span>';
+      }
+      var saveBtn = document.getElementById("btn-save");
+      if (saveBtn) saveBtn.disabled = (b == null);
+    }
+
+    document.getElementById("btn-save").addEventListener("click", function(){
+      var errEl = document.getElementById("form-error");
+      var invalidEntry = draft.attempts.some(function(a){
+        return !a.invalid && a.value != null && (isNaN(a.value) || a.value < 0);
+      });
+      if (invalidEntry){
+        errEl.innerHTML = errorMsg("Bitte gib eine gültige, positive Weite ein, z. B. 5,42 m.");
+        return;
+      }
+      var b = bestAttempt(draft.attempts);
+      if (b == null){
+        errEl.innerHTML = errorMsg("Bitte trage mindestens einen gültigen Versuch ein.");
+        return;
+      }
+      d.attempts = draft.attempts;
+      d.bestResult = b;
+      d.completed = true;
+      refreshStatus(p);
+      saveParticipants();
+      showToast("Ergebnis gespeichert");
+      goToNextOpenOrLaufzettel(p, cat);
+    });
+
+    var clearBtn = document.getElementById("btn-clear");
+    if (clearBtn){
+      clearBtn.addEventListener("click", function(){
+        d.attempts = newAttempts(); d.bestResult = null; d.completed = false;
+        refreshStatus(p);
+        saveParticipants();
+        showToast("Zurückgesetzt");
+        goDisciplineForm(cat);
+      });
+    }
+  }
+
+  function parseAttemptValue(raw){
+    if (raw == null) return null;
+    var cleaned = raw.replace(",", ".").trim();
+    if (cleaned === "") return null;
+    if (!/^\d{1,3}(\.\d{1,2})?$/.test(cleaned)) return NaN;
+    return parseFloat(cleaned);
+  }
+
+  function errorMsg(text){
+    return '<div class="field-error">⚠️ ' + escapeHtml(text) + '</div>';
+  }
+
+  function goToNextOpenOrLaufzettel(p, justCompletedCat){
+    var order = CATEGORY_ORDER;
+    var startIdx = order.indexOf(justCompletedCat);
+    for (var i=1;i<=order.length;i++){
+      var cat = order[(startIdx + i) % order.length];
+      if (!p.disciplines[cat].completed){
+        goDisciplineForm(cat);
+        return;
+      }
+    }
+    goLaufzettel(p.id);
+  }
+
+  /* =========================================================
+     RENDER: SUMMARY
+  ========================================================= */
+  function renderSummary(){
+    var el = document.getElementById("screen");
+    var p = getParticipant(state.activeParticipantId);
+    if (!p){ goHome(); return; }
+
+    var html = "";
+    html += '<div class="lz-header" style="margin-bottom:16px;">';
+    html += '  <div class="lz-name">' + escapeHtml(p.firstName + " " + p.lastName) + '</div>';
+    var metaParts = [];
+    if (p.startNumber) metaParts.push("Startnummer " + escapeHtml(p.startNumber));
+    if (p.club) metaParts.push(escapeHtml(p.club));
+    html += '  <div class="lz-meta">' + (metaParts.join(" · ") || "") + '</div>';
+    html += '</div>';
+
+    html += '<table class="summary-table">';
+    html += '<thead><tr><th>Bereich</th><th>Disziplin</th><th style="text-align:right;">Ergebnis</th></tr></thead><tbody>';
+    CATEGORY_ORDER.forEach(function(cat){
+      var meta = CATEGORY_META[cat];
+      var d = p.disciplines[cat];
+      var discipline = findDiscipline(cat, d.type);
+      var resultText = "—";
+      if (d.completed){
+        resultText = cat === "running" ? d.resultDisplay : formatMeters(d.bestResult);
+      }
+      html += '<tr><td>' + meta.icon + ' ' + meta.name + '</td><td>' + (discipline ? discipline.label : "—") + '</td><td class="result">' + resultText + '</td></tr>';
+    });
+    html += '</tbody></table>';
+
+    var allDone = completedCount(p) === 3;
+    if (allDone){
+      html += '<div class="summary-check">✅ Dreikampf abgeschlossen</div>';
+    }
+
+    html += '<div class="footer-actions">';
+    html += '  <button class="btn btn-secondary" id="btn-edit">Ergebnisse bearbeiten</button>';
+    html += '</div>';
+
+    el.innerHTML = html;
+
+    document.getElementById("btn-edit").addEventListener("click", function(){ goLaufzettel(p.id); });
+  }
+
+  /* =========================================================
+     HELPERS
+  ========================================================= */
+  function escapeHtml(str){
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+  function escapeAttr(str){ return escapeHtml(str); }
+
+  /* =========================================================
+     MAIN RENDER
+  ========================================================= */
+  function render(){
+    renderAppbar();
+    if (state.view === "home") renderHome();
+    else if (state.view === "newParticipant") renderNewParticipant();
+    else if (state.view === "disciplineSelect") renderDisciplineSelect();
+    else if (state.view === "laufzettel") renderLaufzettel();
+    else if (state.view === "disciplineForm") renderDisciplineForm();
+    else if (state.view === "summary") renderSummary();
+    renderBottomNav();
+    document.getElementById("screen").scrollTop = 0;
+    window.scrollTo(0,0);
+  }
+
+  /* =========================================================
+     INIT
+  ========================================================= */
+  loadParticipants();
+  if (state.activeParticipantId && getParticipant(state.activeParticipantId)){
+    state.view = "home";
+  }
+  render();
+
+})();
+</script>
+</body>
+</html>
