@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sound-Werkstatt – Audiobearbeitung mit BandLab</title>
+<!--
+  Sound-Werkstatt · Interaktive Lern-Website (Medienproduktion, Jahrgangsstufe 11)
+  ---------------------------------------------------------------------------
+  Eine einzige Datei: HTML + CSS + JavaScript. Kein Backend, keine Bibliotheken, keine externen Schriften.
+  Läuft per Doppelklick im Browser (Windows: Edge, Chrome, Firefox).
+  Externe Abhängigkeiten: nur die Links im Bereich „Quellen“ (öffnen sich in neuem Tab).
+  Lernstand wird im Browser (localStorage) gespeichert. Ist das nicht möglich, läuft die Seite ohne Speicherung weiter.
+
+  AUFBAU DER DATEI
+    1. CSS            – Design-Tokens, Layout, Komponenten
+    2. HTML           – Navigation + Ansichten (Start, Kapitel 1–3, Praxis, Test, Glossar, Quellen)
+    3. JavaScript     – a) Zustand & Fortschritt  b) Aufgaben-Bausteine (mc, sort, match, order, num)
+                        c) Spezial-Widgets (Größenrechner, Schnitt-Simulator, …)  d) Abschlusstest
+    Inhalte der Aufgaben stehen in der Konstante DATA (leicht anpassbar, falls BandLab seine Oberfläche ändert).
+-->
+<style>
+/* ===== 1. Design-Tokens ===== */
+:root{
+  --paper:#EEF2F5; --surface:#FFFFFF; --ink:#0F1E29; --ink2:#41586A; --line:#CBD6DE;
+  --teal:#0A6470; --teal-d:#074C55; --teal-soft:#DCEFF1;
+  --amber:#9A4A08; --amber-soft:#FCEBD3;
+  --ok:#17603A; --ok-soft:#DDF3E5; --bad:#9B1C1C; --bad-soft:#FBE4E4;
+  --focus:#0B57D0; --wave:#0A6470; --wave2:#C2410C;
+  --r:10px; --r-s:6px;
+  --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-h: Bahnschrift, "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0E1A22; --surface:#15252F; --ink:#E7EEF3; --ink2:#A9BAC7; --line:#2C4250;
+    --teal:#5CC3CF; --teal-d:#8ED8E0; --teal-soft:#123842;
+    --amber:#F3B77A; --amber-soft:#3A2A14;
+    --ok:#7FDBA5; --ok-soft:#12321F; --bad:#FF9E9E; --bad-soft:#3B1717;
+    --focus:#8AB4F8; --wave:#5CC3CF; --wave2:#F59E5B;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 var(--font)}
+h1,h2,h3,h4{font-family:var(--font-h);line-height:1.2;margin:0 0 .5em;font-weight:600}
+h1{font-size:2.3rem} h2{font-size:1.7rem} h3{font-size:1.25rem;margin-top:0} h4{font-size:1.05rem}
+p{margin:0 0 1em;max-width:68ch} ul,ol{margin:0 0 1em;padding-left:1.3em;max-width:68ch} li{margin-bottom:.3em}
+a{color:var(--teal-d)} a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ic{width:1.1em;height:1.1em;vertical-align:-.18em;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.skip{position:absolute;left:-999px;top:0;background:var(--teal-d);color:#fff;padding:.6rem 1rem;z-index:99}
+.skip:focus{left:8px;top:8px}
+
+/* ===== Layout ===== */
+.app{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:100vh}
+.side{background:var(--surface);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;overflow:auto;padding:1.2rem 1rem}
+.brand{font-family:var(--font-h);font-size:1.35rem;font-weight:700;display:flex;gap:.5rem;align-items:center;margin-bottom:.2rem;color:var(--teal-d)}
+.brand-sub{font-size:.85rem;color:var(--ink2);margin:0 0 1.1rem}
+.nav{list-style:none;margin:0;padding:0}
+.nav li{margin:0 0 .25rem}
+.nav button{width:100%;display:flex;justify-content:space-between;gap:.5rem;align-items:center;text-align:left;font:inherit;font-size:.98rem;color:var(--ink);background:none;border:1px solid transparent;border-radius:var(--r-s);padding:.6rem .7rem;cursor:pointer;min-height:44px}
+.nav button:hover{background:var(--teal-soft)}
+.nav button[aria-current="page"]{background:var(--teal-soft);border-color:var(--teal);font-weight:600}
+.nav .st{font-size:.82rem;color:var(--ink2);white-space:nowrap}
+.nav .st.full{color:var(--ok);font-weight:700}
+.nav hr{border:0;border-top:1px solid var(--line);margin:.6rem 0}
+.total{margin:.2rem 0 1rem}
+.total-label{display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:.3rem}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--teal);transition:width .4s}
+.topbar{display:none}
+main{padding:2.2rem clamp(1rem,4vw,3rem) 4rem;min-width:0}
+.view{max-width:860px;margin:0 auto}
+.view:focus,.view h1:focus,.view h2:focus{outline:none}
+@media (max-width:920px){
+  .app{display:block}
+  .topbar{display:flex;position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);padding:.5rem 1rem;align-items:center;gap:.8rem}
+  .topbar button{font:inherit;min-height:44px;padding:.4rem .9rem;border:1px solid var(--teal);color:var(--teal-d);background:none;border-radius:var(--r-s);cursor:pointer}
+  .topbar .bar{flex:1}
+  .side{display:none;position:fixed;inset:0;z-index:30;height:auto;width:min(340px,92vw);box-shadow:0 0 40px rgba(0,0,0,.35)}
+  .side.open{display:block}
+  h1{font-size:1.8rem} h2{font-size:1.45rem}
+}
+
+/* ===== Inhaltsbausteine ===== */
+.lede{font-size:1.15rem;color:var(--ink2)}
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0 1.8rem;padding:0;list-style:none}
+.chips a{display:inline-block;padding:.35rem .75rem;border:1px solid var(--line);border-radius:99px;text-decoration:none;color:var(--ink);font-size:.92rem;background:var(--surface)}
+.chips a:hover{border-color:var(--teal);background:var(--teal-soft)}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:1.4rem 1.5rem;margin:0 0 1.2rem;scroll-margin-top:1rem}
+.step.goal{border-left:6px solid var(--teal)}
+.step.sum{border-left:6px solid var(--amber)}
+.box{display:flex;gap:.7rem;border-radius:var(--r-s);padding:.8rem 1rem;margin:0 0 1rem;border:1px solid}
+.box>div{min-width:0;max-width:66ch} .box p:last-child{margin:0}
+.box.merke{background:var(--teal-soft);border-color:var(--teal)}
+.box.warn{background:var(--amber-soft);border-color:var(--amber)}
+.box.tipp{background:var(--surface);border-color:var(--line);border-style:dashed}
+.box strong.bl{display:block}
+table{border-collapse:collapse;width:100%;font-size:.95rem;margin:0 0 1rem}
+.tw{overflow-x:auto;margin:0 0 1rem}
+th,td{border:1px solid var(--line);padding:.5rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--teal-soft)}
+.flow{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:0 0 1rem;padding:0;list-style:none}
+.flow li{margin:0;padding:.45rem .8rem;border:1px solid var(--teal);border-radius:var(--r-s);background:var(--teal-soft);font-size:.95rem}
+.flow li.opt{border-style:dashed}
+.flow .arr{border:0;background:none;padding:0;color:var(--ink2)}
+code,kbd{font-family:Consolas,"Cascadia Mono",monospace;font-size:.92em;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:.05em .35em}
+kbd{border-bottom-width:2px}
+.gl{font:inherit;color:var(--teal-d);background:none;border:0;border-bottom:2px dotted var(--teal);padding:0;cursor:help;font-weight:600}
+.gl-def{display:block;background:var(--teal-soft);border-left:4px solid var(--teal);padding:.5rem .8rem;margin:.4rem 0;border-radius:0 var(--r-s) var(--r-s) 0;font-size:.93rem;font-weight:400}
+
+/* Schritt-Karten */
+.cards{list-style:none;padding:0;margin:0 0 1rem;max-width:none;counter-reset:c}
+.cards>li{counter-increment:c;display:grid;grid-template-columns:auto 1fr;gap:.2rem 1rem;border:1px solid var(--line);border-radius:var(--r);padding:1rem 1.1rem;margin:0 0 .7rem;background:var(--paper)}
+.cards>li::before{content:counter(c);grid-row:1 / span 3;width:2.1rem;height:2.1rem;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;font-family:var(--font-h);font-weight:700}
+@media (prefers-color-scheme: dark){.cards>li::before{color:#04222A}}
+.cards h4{margin:0}.cards p{margin:0 0 .4rem}
+.done{display:inline-flex;gap:.5rem;align-items:center;font-size:.92rem;cursor:pointer;min-height:32px}
+.done input,.chk input{width:1.25rem;height:1.25rem;accent-color:var(--teal)}
+.chk{display:flex;gap:.7rem;align-items:flex-start;padding:.5rem .2rem;cursor:pointer}
+.chk input{margin-top:.25rem}
+
+/* Aufgaben */
+.ex{border:2px solid var(--line);border-radius:var(--r);padding:1.1rem 1.2rem;margin:0 0 1.1rem;background:var(--surface);position:relative}
+.ex.is-done{border-color:var(--ok)}
+.ex-badge{position:absolute;top:-.8rem;right:.8rem;background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok);border-radius:99px;font-size:.8rem;padding:.05rem .6rem;font-weight:600}
+fieldset{border:0;margin:0;padding:0;min-width:0}
+legend{font-weight:600;padding:0;margin-bottom:.7rem;max-width:66ch}
+.story{background:var(--paper);border-left:4px solid var(--teal);padding:.6rem .9rem;border-radius:0 var(--r-s) var(--r-s) 0;margin:0 0 .8rem}
+.opts{display:grid;gap:.5rem}
+.opt{display:flex;gap:.7rem;align-items:flex-start;text-align:left;font:inherit;color:var(--ink);background:var(--paper);border:2px solid var(--line);border-radius:var(--r-s);padding:.65rem .8rem;cursor:pointer;min-height:48px;width:100%}
+.opt:hover:not(:disabled){border-color:var(--teal)}
+.opt:disabled{cursor:default;color:var(--ink)}
+.opt-mark{width:1.4rem;flex:none;font-weight:700;text-align:center}
+.opt.is-right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.is-wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt.picked{outline:2px solid var(--ink2);outline-offset:1px}
+.fb{display:flex;gap:.6rem;border-radius:var(--r-s);padding:.7rem .9rem;margin:.8rem 0 0;border:1px solid}
+.fb.ok{background:var(--ok-soft);border-color:var(--ok)} .fb.bad{background:var(--bad-soft);border-color:var(--bad)} .fb.neu{background:var(--teal-soft);border-color:var(--teal)}
+.fb>div{min-width:0;max-width:66ch}.fb p{margin:0 0 .4rem}.fb p:last-child,.fb ul:last-child{margin-bottom:0}
+.btn{font:inherit;font-weight:600;min-height:44px;padding:.5rem 1.1rem;border-radius:var(--r-s);border:2px solid var(--teal);background:var(--teal);color:#fff;cursor:pointer}
+@media (prefers-color-scheme: dark){.btn{color:#04222A}}
+.btn:hover:not(:disabled){background:var(--teal-d);border-color:var(--teal-d)}
+.btn.ghost{background:none;color:var(--teal-d)} .btn.ghost:hover:not(:disabled){background:var(--teal-soft)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btnrow{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}
+.pool,.drop{display:flex;flex-wrap:wrap;gap:.5rem;min-height:52px;padding:.5rem;border:2px dashed var(--line);border-radius:var(--r-s)}
+.bucket-row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin:.8rem 0}
+@media (max-width:600px){.bucket-row{grid-template-columns:1fr}}
+.bucket h4{margin:0 0 .4rem}
+.bucket.over .drop,.pool.over{border-color:var(--teal);background:var(--teal-soft)}
+.token{font:inherit;color:var(--ink);background:var(--surface);border:2px solid var(--ink2);border-radius:var(--r-s);padding:.4rem .8rem;cursor:grab;min-height:44px}
+.token[aria-pressed="true"]{background:var(--teal);color:#fff;border-color:var(--teal-d)}
+@media (prefers-color-scheme: dark){.token[aria-pressed="true"]{color:#04222A}}
+.token.is-right{border-color:var(--ok);background:var(--ok-soft);color:var(--ink)}
+.token.is-wrong{border-color:var(--bad);background:var(--bad-soft);color:var(--ink)}
+.rows{display:grid;gap:.6rem;margin:.6rem 0}
+.row{display:grid;grid-template-columns:1fr minmax(150px,220px);gap:.8rem;align-items:center;padding:.5rem;border:2px solid var(--line);border-radius:var(--r-s)}
+@media (max-width:600px){.row{grid-template-columns:1fr}}
+.row.is-right{border-color:var(--ok);background:var(--ok-soft)}.row.is-wrong{border-color:var(--bad);background:var(--bad-soft)}
+select,input[type=number],input[type=text],textarea{font:inherit;color:var(--ink);background:var(--surface);border:2px solid var(--ink2);border-radius:var(--r-s);padding:.45rem .6rem;min-height:44px;max-width:100%}
+textarea{width:100%;min-height:90px}
+.ol-list{list-style:none;padding:0;margin:.6rem 0;display:grid;gap:.4rem;max-width:none}
+.ol-list li{display:flex;gap:.6rem;align-items:center;border:2px solid var(--line);border-radius:var(--r-s);padding:.4rem .6rem;margin:0;background:var(--paper)}
+.ol-list li.is-right{border-color:var(--ok);background:var(--ok-soft)}.ol-list li.is-wrong{border-color:var(--bad);background:var(--bad-soft)}
+.ol-list .t{flex:1}.ol-list .n{font-weight:700;min-width:1.6rem}
+.mv{font:inherit;min-width:44px;min-height:44px;border:2px solid var(--ink2);background:var(--surface);color:var(--ink);border-radius:var(--r-s);cursor:pointer}
+.mv:disabled{opacity:.35}
+
+/* Widgets */
+.widget{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:1rem;margin:0 0 1rem}
+.widget h4{margin-bottom:.6rem}
+canvas{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r-s);background:var(--surface)}
+.ctrls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.8rem;margin-bottom:.8rem}
+.ctrls label{display:grid;gap:.25rem;font-size:.92rem;font-weight:600}
+input[type=range]{width:100%;min-height:32px;accent-color:var(--teal)}
+.out{font-variant-numeric:tabular-nums}
+.small{font-size:.88rem;color:var(--ink2)}
+.map .svgwrap svg{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-s)}
+.hs{cursor:pointer}
+.hs rect.hit{fill:transparent;stroke:var(--teal);stroke-width:2;stroke-dasharray:5 4}
+.hs:hover rect.hit,.hs:focus rect.hit,.hs.on rect.hit{fill:var(--teal);fill-opacity:.15;stroke-dasharray:none}
+.hs:focus{outline:none} .hs:focus-visible rect.hit{stroke:var(--focus);stroke-width:4}
+.hs.seen .seen-dot{opacity:1}.seen-dot{opacity:0}
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:1.6rem;margin-bottom:1.2rem}
+.hero h1{margin-bottom:.3rem}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.8rem;margin:0 0 1rem}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:1rem;display:flex;flex-direction:column;gap:.4rem}
+.tile p{margin:0;flex:1;font-size:.95rem}
+.res{font-family:var(--font-h);font-size:2.4rem;line-height:1}
+.qtest{margin:0 0 1.2rem;padding:1rem 1.1rem;border:2px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.qtest label{display:flex;gap:.7rem;align-items:flex-start;padding:.45rem .3rem;cursor:pointer}
+.qtest input{width:1.25rem;height:1.25rem;margin-top:.25rem;accent-color:var(--teal)}
+.qtest.is-right{border-color:var(--ok)}.qtest.is-wrong{border-color:var(--bad)}
+.gl-list dt{font-weight:700;margin-top:.9rem}.gl-list dd{margin:0}
+.src li{margin-bottom:.6rem}
+@media print{
+  .side,.topbar,.btn,.btnrow,.skip,.chips{display:none!important}
+  .app{display:block}body{background:#fff;color:#000;font-size:12pt}
+  .step,.ex{border:1px solid #999;break-inside:avoid}
+  .view[hidden]{display:none!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt springen</a>
+
+<!-- Icon-Sprite (nur Formen, Bedeutung steht immer zusätzlich im Text) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-ok" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5L19.5 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.01"/></symbol>
+  <symbol id="i-tip" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 12h2M7 7v10M11 4v16M15 8v8M19 10v4M22 12h-1"/></symbol>
+</svg>
+
+<div class="app">
+  <div class="topbar">
+    <button type="button" id="menuBtn" aria-expanded="false" aria-controls="side">Menü</button>
+    <div class="bar" aria-hidden="true"><i id="topBar"></i></div>
+    <span class="small" id="topPct">0 %</span>
+  </div>
+
+  <aside class="side" id="side" aria-label="Kapitelnavigation">
+    <div class="brand"><svg class="ic" aria-hidden="true"><use href="#i-wave"/></svg> Sound-Werkstatt</div>
+    <p class="brand-sub">Audiobearbeitung mit BandLab</p>
+    <div class="total">
+      <div class="total-label"><span>Gesamtfortschritt</span><span id="totalPct">0 %</span></div>
+      <div class="bar" role="progressbar" aria-label="Gesamtfortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="totalBar"><i></i></div>
+    </div>
+    <nav aria-label="Kapitel"><ul class="nav" id="nav"></ul></nav>
+  </aside>
+
+  <main id="main">
+
+<!-- ================= START ================= -->
+<section class="view" id="v-start" aria-labelledby="h-start" hidden>
+  <div class="hero">
+    <h1 id="h-start" tabindex="-1">Sound-Werkstatt</h1>
+    <p class="lede">Vom Rohmaterial zur fertigen Audiodatei: Formate verstehen, konvertieren, in BandLab bearbeiten und exportieren.</p>
+    <canvas id="heroWave" width="900" height="150" role="img" aria-label="Wellenform einer Sprachaufnahme. Klicke hinein, um den Abspielkopf zu setzen."></canvas>
+    <p class="small" style="margin:.5rem 0 0" id="heroInfo">Klicke in die Wellenform: So setzt du später in BandLab den Abspielkopf. Mit den Pfeiltasten kannst du ihn auch verschieben.</p>
+  </div>
+
+  <div class="step">
+    <h3>Dein Auftrag</h3>
+    <p>Eine Redaktion braucht aus deinem selbst aufgenommenen Material einen sauberen Audiobeitrag. Dafür entscheidest du, in welchem Format du arbeitest, konvertierst bei Bedarf, schneidest und mischst in BandLab und gibst die Datei sinnvoll aus.</p>
+    <p>Du arbeitest in deinem eigenen Tempo. Wenn du ein Thema schon kennst, kannst du in jedem Kapitel direkt zum Wissenscheck springen.</p>
+  </div>
+
+  <h2>Dein Lernpfad</h2>
+  <div class="grid3" id="pathTiles"></div>
+
+  <div class="step">
+    <h3>Das brauchst du</h3>
+    <ul>
+      <li>Kopfhörer und deine eigene Audioaufnahme (z. B. Sprache, 1–3 Minuten)</li>
+      <li>Audacity (ist auf den Schulrechnern installiert)</li>
+      <li>Ein BandLab-Zugang. Welches Konto du nutzt, klärt deine Lehrkraft mit dir (Datenschutz).</li>
+      <li>Internetverbindung, denn BandLab läuft im Browser und speichert in der Cloud.</li>
+    </ul>
+    <div class="box tipp"><svg class="ic" aria-hidden="true"><use href="#i-tip"/></svg><div><strong class="bl">Vorschlag für 4–6 Unterrichtsstunden</strong>
+      <p>Std. 1: Kapitel 1 · Std. 2: Kapitel 2 · Std. 3–4: Kapitel 3 · Std. 5: Praxisaufgabe · Std. 6: Abschlusstest und Reflexion. Bei nur 4 Stunden: Kapitel 1 und 2 gemeinsam in einer Stunde, Praxisaufgabe und Test zusammen in der letzten.</p></div></div>
+    <p class="small">Dein Lernstand wird in diesem Browser gespeichert. Auf einem anderen Rechner beginnst du wieder von vorn.</p>
+    <div class="btnrow"><button type="button" class="btn ghost" id="resetBtn">Lernstand zurücksetzen</button></div>
+  </div>
+</section>
+
+<!-- ================= KAPITEL 1 ================= -->
+<section class="view" id="v-k1" aria-labelledby="h-k1" hidden>
+  <h2 id="h-k1" tabindex="-1">Kapitel 1: Audio-Dateiformate</h2>
+  <p class="lede">Warum ist eine WAV-Datei so groß, und warum klingt eine MP3 trotzdem fast gleich?</p>
+  <ul class="chips" aria-label="Abschnitte dieses Kapitels">
+    <li><a href="#k1-ziel">Lernziel</a></li><li><a href="#k1-einf">Einführung</a></li><li><a href="#k1-erkl">Erklärung</a></li><li><a href="#k1-bsp">Beispiel</a></li><li><a href="#k1-uebung">Übung</a></li><li><a href="#k1-check">Wissenscheck</a></li><li><a href="#k1-transfer">Transfer</a></li><li><a href="#k1-sum">Zusammenfassung</a></li>
+  </ul>
+
+  <section class="step goal" id="k1-ziel"><h3>Lernziel</h3>
+    <p>Du kannst die Formate MP3, WAV, M4A, AAC und FLAC unterscheiden, ihre Vor- und Nachteile nennen und begründen, welches Format für Bearbeitung und welches für Veröffentlichung sinnvoll ist.</p>
+    <p><button type="button" class="btn ghost" data-jump="k1-check">Ich kenne das schon: direkt zum Wissenscheck</button></p></section>
+
+  <section class="step" id="k1-einf"><h3>Kurze Einführung</h3>
+    <p>Jede Audiodatei, die du in BandLab hochlädst oder herunterlädst, hat ein Format. Das Format entscheidet über Dateigröße, Klangqualität und darüber, wo sich die Datei öffnen lässt. Wer das versteht, vermeidet Fehler wie unnötig große Dateien, schlechten Klang oder Dateien, die sich gar nicht importieren lassen.</p></section>
+
+  <section class="step" id="k1-erkl"><h3>Erklärung</h3>
+    <h4>Was ist ein Audio-Dateiformat?</h4>
+    <p>Schall wird digital gespeichert, indem ein Mikrofonsignal sehr oft pro Sekunde gemessen wird ([[abtastrate|Abtastrate]]). Jeder Messwert wird mit einer bestimmten Genauigkeit gespeichert ([[bittiefe|Bittiefe]]). Diese Rohdaten heißen [[pcm|PCM]]. Ein [[codec|Codec]] kann sie zusätzlich komprimieren. Ein [[container|Container]] (die Datei) verpackt alles samt Zusatzinfos.</p>
+    <ol class="flow" aria-label="Weg vom Schall zur Datei">
+      <li>Schall</li><li class="arr" aria-hidden="true">→</li><li>Messen (Abtastrate, Bittiefe)</li><li class="arr" aria-hidden="true">→</li><li>PCM-Rohdaten</li><li class="arr" aria-hidden="true">→</li><li class="opt">Codec (optional, komprimiert)</li><li class="arr" aria-hidden="true">→</li><li>Container = Datei</li>
+    </ol>
+    <h4>Verlustfrei oder verlustbehaftet?</h4>
+    <p>Bei [[verlustfrei|verlustfreien]] Formaten (WAV, FLAC) lässt sich das Original vollständig zurückgewinnen. Bei [[verlustbehaftet|verlustbehafteten]] Formaten (MP3, AAC) werden Informationen dauerhaft entfernt, die man kaum hören soll. Die Datei wird dadurch viel kleiner.</p>
+    <div class="box merke"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div><strong class="bl">Merke</strong><p>Verloren ist verloren: Aus einer MP3 kannst du keine bessere Qualität mehr herausholen, auch wenn du sie in WAV umwandelst.</p></div></div>
+    <h4>Bitrate und Dateigröße</h4>
+    <p>Die [[bitrate|Bitrate]] gibt an, wie viele Daten pro Sekunde gespeichert werden. Für unkomprimiertes Stereo in CD-Qualität gilt: 44.100 × 16 × 2 = 1.411.200 Bit pro Sekunde (rund 1.411 kbit/s). Eine MP3 mit 128 kbit/s braucht nur etwa ein Elftel davon.</p>
+    <h4>Die Formate im Vergleich</h4>
+    <div class="tw"><table>
+      <caption class="sr-only">Vergleich der Audioformate</caption>
+      <thead><tr><th scope="col">Format</th><th scope="col">Art</th><th scope="col">Größe pro Minute (Stereo)</th><th scope="col">Typischer Einsatz</th><th scope="col">Import in BandLab (Web)</th></tr></thead>
+      <tbody>
+      <tr><th scope="row">WAV</th><td>unkomprimiert, verlustfrei</td><td>ca. 10 MB (44,1 kHz, 16 Bit)</td><td>Aufnahme, Bearbeitung, Archiv</td><td>ja</td></tr>
+      <tr><th scope="row">FLAC</th><td>komprimiert, verlustfrei</td><td>etwa die Hälfte von WAV (je nach Material)</td><td>Archiv, verlustfreie Weitergabe</td><td><strong>nein</strong> (nicht in der BandLab-Liste)</td></tr>
+      <tr><th scope="row">MP3</th><td>komprimiert, verlustbehaftet</td><td>ca. 0,9 MB bei 128 kbit/s</td><td>Veröffentlichung, Podcast, Weitergabe</td><td>ja</td></tr>
+      <tr><th scope="row">AAC</th><td>Codec, verlustbehaftet</td><td>ca. 0,9 MB bei 128 kbit/s</td><td>Streaming, Video, Apple-Geräte</td><td>ja (in der BandLab-Tabelle als „ACC“ geschrieben, gemeint ist AAC)</td></tr>
+      <tr><th scope="row">M4A</th><td>Container, enthält meist AAC</td><td>wie AAC</td><td>Weitergabe, Smartphone-Aufnahmen</td><td>ja</td></tr>
+      </tbody></table></div>
+    <div class="box warn"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg><div><strong class="bl">Achtung: AAC und M4A sind nicht dasselbe</strong><p>AAC ist ein Codec (das Kompressionsverfahren). M4A ist der Container, in dem AAC-Daten meistens stecken.</p></div></div>
+    <h4>Welches Format wofür?</h4>
+    <ul>
+      <li><strong>Aufnehmen und Bearbeiten:</strong> WAV. Keine Verluste, jede Bearbeitung startet mit voller Qualität.</li>
+      <li><strong>Archivieren:</strong> WAV oder FLAC.</li>
+      <li><strong>Veröffentlichen und Teilen:</strong> MP3 (für Sprache sind 128 kbit/s ein üblicher Wert) oder M4A/AAC. Frage immer, welches Format die Plattform verlangt.</li>
+    </ul>
+  </section>
+
+  <section class="step" id="k1-bsp"><h3>Beispiel</h3>
+    <p>Dein Interview dauert 3 Minuten. Als Stereo-WAV (44,1 kHz, 16 Bit) hat es etwa 30 MB. Als Mono-WAV rund 15 MB, denn Sprache braucht meist nur einen Kanal. Als MP3 mit 128 kbit/s sind es nur etwa 2,7 MB. Für das Weiterbearbeiten nimmst du die WAV, zum Verschicken die MP3.</p>
+  </section>
+
+  <section class="step" id="k1-uebung"><h3>Interaktive Übung</h3>
+    <div class="ex" data-id="k1-sort"></div>
+    <div class="ex" data-id="k1-match"></div>
+    <div class="widget" data-w="calc"></div>
+    <div class="ex" data-id="k1-num"></div>
+  </section>
+
+  <section class="step" id="k1-check"><h3>Wissenscheck</h3>
+    <div class="ex" data-id="k1-c1"></div>
+    <div class="ex" data-id="k1-c2"></div>
+    <div class="ex" data-id="k1-c3"></div>
+    <div class="ex" data-id="k1-c4"></div>
+  </section>
+
+  <section class="step" id="k1-transfer"><h3>Transfer: Deine eigene Aufnahme untersuchen</h3>
+    <p>Finde heraus, in welchem Format deine Aufnahme vorliegt.</p>
+    <label class="chk"><input type="checkbox" data-check="k1-t1"><span>Öffne den Windows-Explorer und blende die Dateiendungen ein (Reiter <em>Ansicht</em>, dort <em>Dateinamenerweiterungen</em>; bei Windows 11 unter <em>Anzeigen › Einblenden</em>).</span></label>
+    <label class="chk"><input type="checkbox" data-check="k1-t2"><span>Rechtsklick auf deine Datei › <em>Eigenschaften</em> › Reiter <em>Details</em>. Notiere Dateigröße, Länge, Bitrate und Kanäle (wenn angezeigt).</span></label>
+    <label class="chk"><input type="checkbox" data-check="k1-t3"><span>Rechne aus: Wie groß wäre die Datei als 128-kbit/s-MP3? Vergleiche mit dem Größenrechner oben.</span></label>
+    <label for="k1-note" class="small">Meine Notizen (bleiben nur in diesem Browser):</label>
+    <textarea id="k1-note" data-note="k1"></textarea>
+  </section>
+
+  <section class="step sum" id="k1-sum"><h3>Zusammenfassung</h3>
+    <ul>
+      <li>Format = Container + (oft) Codec. M4A ist ein Container, AAC ein Codec.</li>
+      <li>Verlustfrei (WAV, FLAC): Original bleibt erhalten. Verlustbehaftet (MP3, AAC): kleiner, aber Information dauerhaft weg.</li>
+      <li>Bearbeiten in WAV, veröffentlichen in MP3 oder M4A/AAC.</li>
+      <li>BandLab-Web importiert MP3, WAV, M4A, AAC, OGG (und MP4, MIDI), aber nicht FLAC.</li>
+    </ul>
+    <button type="button" class="btn" data-go="k2">Weiter zu Kapitel 2</button>
+  </section>
+</section>
+
+<!-- ================= KAPITEL 2 ================= -->
+<section class="view" id="v-k2" aria-labelledby="h-k2" hidden>
+  <h2 id="h-k2" tabindex="-1">Kapitel 2: Audio-Dateien unter Windows konvertieren</h2>
+  <p class="lede">Ein Format passt nicht? Dann wandelst du es um, und zwar so, dass die Qualität nicht leidet.</p>
+  <ul class="chips" aria-label="Abschnitte dieses Kapitels">
+    <li><a href="#k2-ziel">Lernziel</a></li><li><a href="#k2-einf">Einführung</a></li><li><a href="#k2-erkl">Erklärung</a></li><li><a href="#k2-bsp">Beispiel</a></li><li><a href="#k2-uebung">Übung</a></li><li><a href="#k2-check">Wissenscheck</a></li><li><a href="#k2-transfer">Transfer</a></li><li><a href="#k2-sum">Zusammenfassung</a></li>
+  </ul>
+
+  <section class="step goal" id="k2-ziel"><h3>Lernziel</h3>
+    <p>Du kannst begründen, wann eine Konvertierung nötig ist, und eine Datei mit Audacity sachgerecht in ein anderes Format umwandeln. Du kennst typische Fehler, den Qualitätsverlust bei mehrfacher Konvertierung und ein sinnvolles Benennungsschema.</p>
+    <p><button type="button" class="btn ghost" data-jump="k2-check">Ich kenne das schon: direkt zum Wissenscheck</button></p></section>
+
+  <section class="step" id="k2-einf"><h3>Kurze Einführung</h3>
+    <p>Eine Konvertierung rechnet die Audiodaten in ein anderes Format um. Sie ist zum Beispiel nötig, wenn BandLab eine Datei nicht importiert (etwa FLAC) oder wenn du für die Veröffentlichung eine kleine MP3 brauchst.</p></section>
+
+  <section class="step" id="k2-erkl"><h3>Erklärung</h3>
+    <h4>Warum und wann konvertieren?</h4>
+    <ul>
+      <li><strong>Import nicht möglich:</strong> BandLab-Web importiert laut Hilfe MIDI, MP3, MP4, WAV, M4A, AAC und OGG. FLAC steht nicht in der Liste.</li>
+      <li><strong>Ausgabe:</strong> BandLab-Web gibt Mixdowns als M4A oder WAV aus. Braucht die Plattform MP3, konvertierst du danach.</li>
+      <li><strong>Dateigröße:</strong> Zum Verschicken oder Hochladen ist eine kleine MP3 oder M4A praktischer.</li>
+    </ul>
+    <h4>Der Workflow in Audacity (Windows)</h4>
+    <p>Audacity ist kostenlos und auf den Schulrechnern installiert. Menünamen können je nach Audacity-Version leicht abweichen.</p>
+    <ol class="cards">
+      <li><h4>Original sichern</h4><p>Lege eine Kopie an und arbeite nur mit der Kopie. Das Original bleibt unverändert im Ordner <code>01_Rohmaterial</code>.</p><label class="done"><input type="checkbox" data-check="k2-s1"> Verstanden</label></li>
+      <li><h4>Datei öffnen</h4><p>In Audacity: <em>Datei › Öffnen…</em> und die Datei wählen. Im Spurkopf links siehst du, ob die Spur Mono oder Stereo ist und welche Abtastrate sie hat.</p><label class="done"><input type="checkbox" data-check="k2-s2"> Verstanden</label></li>
+      <li><h4>Export starten</h4><p><em>Datei › Audio exportieren…</em> (in älteren Versionen: <em>Datei › Exportieren</em>). Wähle dort das Zielformat.</p><label class="done"><input type="checkbox" data-check="k2-s3"> Verstanden</label></li>
+      <li><h4>Format und Qualität wählen</h4><p><strong>WAV</strong> für die Weiterarbeit. <strong>MP3</strong> für die Veröffentlichung: Nach dem Audacity-Handbuch sind 128 kbit/s für Sprache ein sicherer Standard, 256 kbit/s für Musik. Exportiere Sprachaufnahmen als <strong>Mono</strong>, sonst wird die Datei doppelt so groß.</p><label class="done"><input type="checkbox" data-check="k2-s4"> Verstanden</label></li>
+      <li><h4>Name und Ort festlegen</h4><p>Vergib einen Namen nach dem Schema unten und speichere im passenden Ordner, zum Beispiel <code>02_Konvertiert</code>.</p><label class="done"><input type="checkbox" data-check="k2-s5"> Verstanden</label></li>
+      <li><h4>Ergebnis prüfen</h4><p>Höre die neue Datei an. Kontrolliere Größe und Endung im Explorer (Rechtsklick › Eigenschaften).</p><label class="done"><input type="checkbox" data-check="k2-s6"> Verstanden</label></li>
+    </ol>
+    <div class="box warn"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg><div><strong class="bl">M4A/AAC braucht in Audacity FFmpeg</strong><p>Manche Formate, darunter M4A, erscheinen in Audacity nur, wenn die Zusatzbibliothek [[ffmpeg|FFmpeg]] installiert ist. Fehlt der Eintrag, wähle WAV, MP3 oder OGG oder frage deine Lehrkraft.</p></div></div>
+
+    <h4>Typische Fehlerquellen</h4>
+    <ul>
+      <li><strong>Endung nur umbenannt:</strong> Aus <code>interview.wav</code> wird durch Umbenennen in <code>interview.mp3</code> keine MP3. Nur der Name ändert sich, die Daten bleiben WAV.</li>
+      <li><strong>Mono als Stereo exportiert:</strong> Zwei identische Kanäle, doppelte Dateigröße.</li>
+      <li><strong>Original überschrieben:</strong> Danach ist die verlustfreie Fassung weg.</li>
+      <li><strong>Format nicht in der Exportliste:</strong> Meist fehlt FFmpeg (siehe oben).</li>
+    </ul>
+    <h4>Qualitätsverlust bei mehrfacher Konvertierung</h4>
+    <p>Jede verlustbehaftete Kodierung entfernt erneut Information. Wer MP3 → bearbeiten → MP3 → bearbeiten → MP3 macht, verschlechtert die Datei jedes Mal ([[generationsverlust|Generationsverlust]]).</p>
+    <div class="box merke"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div><strong class="bl">Merke</strong><p>Gehe immer vom verlustfreien Original aus und erzeuge die MP3 oder M4A erst ganz am Ende, und nur einmal.</p></div></div>
+    <h4>Dateibenennung und Ordner</h4>
+    <p>Ein Schema spart dir später die Suche:</p>
+    <ul>
+      <li><code>projekt_thema_take01_roh.wav</code> (Rohaufnahme)</li>
+      <li><code>projekt_thema_v02_bearbeitet.wav</code> (Zwischenstand)</li>
+      <li><code>projekt_thema_final.mp3</code> (Ausgabe)</li>
+    </ul>
+    <p>Ordner: <code>01_Rohmaterial</code>, <code>02_Konvertiert</code>, <code>03_BandLab-Export</code>, <code>04_Final</code>. Verzichte auf Leerzeichen, Umlaute und Sonderzeichen im Dateinamen.</p>
+  </section>
+
+  <section class="step" id="k2-bsp"><h3>Beispiel</h3>
+    <p>Eine Mitschülerin schickt dir ihr Interview als FLAC. BandLab-Web importiert FLAC nicht. Du öffnest die Datei in Audacity, exportierst sie als WAV nach <code>02_Konvertiert</code> (Name: <code>interview_lena_take01_konv.wav</code>) und importierst diese WAV in BandLab. Nach dem Schnitt exportierst du aus BandLab wieder WAV und erzeugst erst zum Schluss die MP3 zur Veröffentlichung.</p></section>
+
+  <section class="step" id="k2-uebung"><h3>Interaktive Übung</h3>
+    <div class="ex" data-id="k2-scn"></div>
+    <div class="ex" data-id="k2-order"></div>
+    <div class="widget" data-w="gen"></div>
+    <div class="ex" data-id="k2-gen"></div>
+  </section>
+
+  <section class="step" id="k2-check"><h3>Wissenscheck</h3>
+    <div class="ex" data-id="k2-c1"></div>
+    <div class="ex" data-id="k2-c2"></div>
+    <div class="ex" data-id="k2-c3"></div>
+    <div class="ex" data-id="k2-c4"></div>
+  </section>
+
+  <section class="step" id="k2-transfer"><h3>Transfer: Konvertiere deine eigene Aufnahme</h3>
+    <ol class="cards">
+      <li><h4>Kopie öffnen</h4><p>Öffne eine Kopie deiner Aufnahme in Audacity.</p><label class="done"><input type="checkbox" data-check="k2-t1"> Erledigt</label></li>
+      <li><h4>Zweimal exportieren</h4><p>Exportiere einmal als WAV und einmal als MP3 (Sprache: 128 kbit/s, Mono). Benenne beide nach dem Schema.</p><label class="done"><input type="checkbox" data-check="k2-t2"> Erledigt</label></li>
+      <li><h4>Größen vergleichen</h4><p>Trage die Dateigrößen (aus den Eigenschaften im Explorer) hier ein:</p>
+        <div class="ctrls" style="margin:0 0 .5rem">
+          <label>WAV in MB<input type="number" id="szWav" min="0" step="any" inputmode="decimal"></label>
+          <label>MP3 in MB<input type="number" id="szMp3" min="0" step="any" inputmode="decimal"></label>
+        </div>
+        <p class="out" id="szOut" aria-live="polite">Trage beide Werte ein.</p>
+        <label class="done"><input type="checkbox" data-check="k2-t3"> Erledigt</label></li>
+    </ol>
+    <label for="k2-note" class="small">Was fällt dir beim Anhören auf? (bleibt nur in diesem Browser)</label>
+    <textarea id="k2-note" data-note="k2"></textarea>
+  </section>
+
+  <section class="step sum" id="k2-sum"><h3>Zusammenfassung</h3>
+    <ul>
+      <li>Konvertiert wird, wenn Import nicht klappt, das Zielformat verlangt wird oder die Datei zu groß ist.</li>
+      <li>Audacity: <em>Datei › Öffnen</em>, dann <em>Datei › Audio exportieren</em>. M4A braucht FFmpeg.</li>
+      <li>Endung umbenennen konvertiert nicht. Original nie überschreiben. Sprache als Mono exportieren.</li>
+      <li>Verlustbehaftet nur einmal und erst am Ende kodieren. Klare Dateinamen und Ordner nutzen.</li>
+    </ul>
+    <button type="button" class="btn" data-go="k3">Weiter zu Kapitel 3</button>
+  </section>
+</section>
+
+<!-- ================= KAPITEL 3 ================= -->
+<section class="view" id="v-k3" aria-labelledby="h-k3" hidden>
+  <h2 id="h-k3" tabindex="-1">Kapitel 3: Audiobearbeitung mit BandLab</h2>
+  <p class="lede">Importieren, schneiden, Lautstärke anpassen, Fades setzen, mischen und exportieren. Alles im Browser.</p>
+  <ul class="chips" aria-label="Abschnitte dieses Kapitels">
+    <li><a href="#k3-ziel">Lernziel</a></li><li><a href="#k3-einf">Einführung</a></li><li><a href="#k3-erkl">Erklärung</a></li><li><a href="#k3-bsp">Beispiel</a></li><li><a href="#k3-uebung">Übung</a></li><li><a href="#k3-check">Wissenscheck</a></li><li><a href="#k3-transfer">Transfer</a></li><li><a href="#k3-sum">Zusammenfassung</a></li>
+  </ul>
+
+  <section class="step goal" id="k3-ziel"><h3>Lernziel</h3>
+    <p>Du kannst in BandLab ein Projekt anlegen, eine Audiodatei importieren, sie schneiden, unerwünschte Stellen entfernen, Lautstärke und Fades anpassen, mit mehreren Spuren arbeiten und das Ergebnis exportieren.</p>
+    <p><button type="button" class="btn ghost" data-jump="k3-check">Ich kenne das schon: direkt zum Wissenscheck</button></p></section>
+
+  <section class="step" id="k3-einf"><h3>Kurze Einführung</h3>
+    <p>Das BandLab Studio ist eine kostenlose, cloudbasierte [[daw|DAW]]. Sie läuft im Browser, deine Projekte liegen in deinem Konto. Ein Projekt darf bei BandLab bis zu 15 Minuten lang sein und bis zu 16 Spuren enthalten.</p>
+    <div class="box warn"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg><div><strong class="bl">Oberflächen ändern sich</strong><p>Die Anleitungen unten folgen der BandLab-Hilfe (Stand 20.09.2026). Sieht dein Bildschirm anders aus oder ist eine Beschriftung deutsch, suche das Symbol oder das Wort in deiner Ansicht. Im Bereich „Quellen“ findest du die Hilfeseiten.</p></div></div></section>
+
+  <section class="step" id="k3-erkl"><h3>Erklärung</h3>
+    <h4>Teil A: Einstieg, Import und Oberfläche</h4>
+    <ol class="cards">
+      <li><h4>Studio öffnen</h4><p>Rufe bandlab.com auf und melde dich mit dem Konto an, das deine Lehrkraft vorgibt. Klicke oben rechts auf <em>Create</em> und dann auf <em>New Project</em>.</p><label class="done"><input type="checkbox" data-check="k3-a1"> Erledigt</label></li>
+      <li><h4>Datei importieren (neues Projekt)</h4><p>Beim ersten Öffnen fragt BandLab nach einer neuen Spur (<em>New Track</em>). Klicke unten auf <em>Import Audio/MIDI</em> und wähle deine Datei im Dateidialog.</p><label class="done"><input type="checkbox" data-check="k3-a2"> Erledigt</label></li>
+      <li><h4>Weitere Dateien importieren</h4><p>In einem bestehenden Projekt ziehst du die Datei per Drag &amp; Drop ins Studio oder klickst im Arrangement-Bereich auf <em>Drop a loop or an audio/MIDI/video file</em>.</p><label class="done"><input type="checkbox" data-check="k3-a3"> Erledigt</label></li>
+      <li><h4>Anfang kontrollieren</h4><p>Importierte Dateien können am Anfang einige Sekunden Stille haben. Das ist laut BandLab normal: Ziehe den Regionsanfang auf die schwach gestrichelte senkrechte Linie, die den echten Beginn markiert.</p><label class="done"><input type="checkbox" data-check="k3-a4"> Erledigt</label></li>
+      <li><h4>Anhören und navigieren</h4><p>Starte die Wiedergabe über die Transportleiste (Play). Den [[abspielkopf|Abspielkopf]] versetzt du per Klick oder Ziehen im Zeitlineal. Probiere es aus, bis du jede Stelle schnell findest.</p><label class="done"><input type="checkbox" data-check="k3-a5"> Erledigt</label></li>
+    </ol>
+    <p>Wichtige Begriffe: Eine [[spur|Spur]] ist eine Zeile der Timeline. Auf ihr liegen [[region|Regionen]], also Audioabschnitte, die du einzeln bearbeiten kannst.</p>
+
+    <h4>Teil B: Schneiden und bearbeiten</h4>
+    <ol class="cards">
+      <li><h4>Region schneiden (Slice)</h4><p>Setze den Abspielkopf an die Schnittstelle. Rechtsklick auf die Region › <em>Slice</em>, oder Taste <kbd>S</kbd>. Die Region ist jetzt in zwei unabhängige Regionen geteilt.</p><label class="done"><input type="checkbox" data-check="k3-b1"> Erledigt</label></li>
+      <li><h4>Unerwünschte Bereiche entfernen</h4><p>Wähle die Region aus (Räuspern, lange Pause, Versprecher) und drücke <kbd>Entf</kbd> bzw. <kbd>Backspace</kbd>, oder Rechtsklick › <em>Delete</em>.</p><label class="done"><input type="checkbox" data-check="k3-b2"> Erledigt</label></li>
+      <li><h4>Ausschnitte verschieben</h4><p>Ziehe die übrigen Regionen mit der Maus aneinander, sodass keine Lücke bleibt. Regionen lassen sich überall im Projekt ablegen.</p><label class="done"><input type="checkbox" data-check="k3-b3"> Erledigt</label></li>
+      <li><h4>Lautstärke anpassen</h4><p>Region auswählen, unten den Reiter <em>Editor</em> öffnen: dort stellst du <em>Region Gain</em> ein. Alternativ Rechtsklick › <em>Normalize</em>: BandLab hebt oder senkt die Region, bis die lauteste Stelle einen Zielpegel erreicht. Die Gesamtlautstärke einer Spur regelst du am Spurkopf.</p><label class="done"><input type="checkbox" data-check="k3-b4"> Erledigt</label></li>
+      <li><h4>Fades setzen</h4><p>Klicke die Region an und ziehe die Fade-Griffe am Anfang und am Ende. Ein [[fade|Fade]] blendet weich ein oder aus und beseitigt Klicken an Schnittstellen. Du kannst immer nur eine Region gleichzeitig faden.</p><label class="done"><input type="checkbox" data-check="k3-b5"> Erledigt</label></li>
+    </ol>
+    <div class="box tipp"><svg class="ic" aria-hidden="true"><use href="#i-tip"/></svg><div><strong class="bl">Tipp</strong><p>Mehrere getrennte Regionen lassen sich wieder verbinden: markieren, Rechtsklick › <em>Merge</em>. Kurzbefehle findest du in der BandLab-Hilfe unter „Studio Keyboard Shortcuts“.</p></div></div>
+    <div class="box warn"><svg class="ic" aria-hidden="true"><use href="#i-warn"/></svg><div><strong class="bl">Achtung: Übersteuerung</strong><p>Wird ein Signal zu laut, entsteht [[clipping|Clipping]]: Die Spitzen werden abgeschnitten, es klingt verzerrt. Höre nach jeder Lautstärkeänderung kritisch hin.</p></div></div>
+
+    <h4>Teil C: Mehrere Spuren, Effekte, Speichern, Export</h4>
+    <ol class="cards">
+      <li><h4>Zweite Spur hinzufügen</h4><p>Importiere eine zweite Datei (z. B. Musik oder Atmosphäre) auf eine neue Spur. Jede Spur hat ihre eigene Lautstärke. Für Sprache mit Musik gilt: Die Sprache muss immer verständlich bleiben.</p><label class="done"><input type="checkbox" data-check="k3-c1"> Erledigt</label></li>
+      <li><h4>Effekte nutzen</h4><p>Klicke die Spur an und öffne <em>Effects</em> unten links oder das <em>Fx</em>-Symbol am Spurkopf. Mit <em>Add Effect</em> fügst du Effekte hinzu, links liegen fertige Presets. Pro Spur sind bis zu 10 Effekte möglich. Manche Effekte erfordern eine BandLab-Membership. Für Sprache gilt: lieber dezent, und immer mit und ohne Effekt vergleichen.</p><label class="done"><input type="checkbox" data-check="k3-c2"> Erledigt</label></li>
+      <li><h4>Projekt speichern</h4><p>BandLab speichert Projekte in der Cloud, du findest sie über das <em>Library</em>-Symbol in der oberen Leiste. Dafür brauchst du eine Internetverbindung. Gib deinem Projekt einen Namen nach dem Dateischema.</p><label class="done"><input type="checkbox" data-check="k3-c3"> Erledigt</label></li>
+      <li><h4>Audio exportieren</h4><p>Im Studio: Projektmenü oben links › <em>Project › Download › Mixdown As</em>, dann das Format wählen. Alternativ: <em>Library</em> › Song anklicken › <em>Download</em> › Format. In der Web-Version gibt es den Mixdown als <strong>M4A</strong> (128 oder 192 kbit/s) oder als <strong>WAV</strong> (16 Bit, 44,1 kHz). Einzelne Abschnitte lassen sich nicht exportieren, es wird immer das ganze Projekt ausgegeben.</p><label class="done"><input type="checkbox" data-check="k3-c4"> Erledigt</label></li>
+      <li><h4>Ergebnis prüfen</h4><p>Lade die Datei herunter, öffne sie im Explorer und höre sie einmal komplett an: Anfang, Schnittstellen, Ende.</p><label class="done"><input type="checkbox" data-check="k3-c5"> Erledigt</label></li>
+    </ol>
+    <div class="box merke"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div><strong class="bl">Merke</strong><p>BandLab-Web gibt kein MP3 aus. Für die Veröffentlichung als MP3 exportierst du WAV und wandelst die Datei danach in Audacity um (Kapitel 2).</p></div></div>
+  </section>
+
+  <section class="step" id="k3-bsp"><h3>Beispiel</h3>
+    <p>Lena importiert ihr Interview (WAV, 3 Minuten). Am Anfang liegen 2 Sekunden Stille, in der Mitte ein Räuspern und eine lange Denkpause. Sie schneidet an sechs Stellen, löscht die drei unerwünschten Regionen, schiebt die Sprachteile aneinander und setzt kurze Fades. Dann importiert sie Musik auf eine zweite Spur und senkt sie deutlich unter die Sprache. Zum Schluss exportiert sie die Mixdown-WAV und hört sie einmal komplett an.</p></section>
+
+  <section class="step" id="k3-uebung"><h3>Interaktive Übung</h3>
+    <h4>Teil A: Oberfläche erkunden</h4>
+    <div class="widget map" data-w="map"></div>
+    <div class="ex" data-id="k3-mapq"></div>
+    <h4>Teil B: Schneiden, Lautstärke, Fades</h4>
+    <div class="widget" data-w="cut"></div>
+    <div class="widget" data-w="lab"></div>
+    <h4>Teil C: Mischen und Exportieren</h4>
+    <div class="widget" data-w="mix"></div>
+    <div class="ex" data-id="k3-order"></div>
+    <div class="ex" data-id="k3-scn"></div>
+  </section>
+
+  <section class="step" id="k3-check"><h3>Wissenscheck</h3>
+    <div class="ex" data-id="k3-c1"></div>
+    <div class="ex" data-id="k3-c2"></div>
+    <div class="ex" data-id="k3-c3"></div>
+    <div class="ex" data-id="k3-c4"></div>
+  </section>
+
+  <section class="step" id="k3-transfer"><h3>Transfer: 10-Minuten-Probe in BandLab</h3>
+    <p>Probiere alles einmal an deiner eigenen Aufnahme aus, bevor du die Praxisaufgabe beginnst.</p>
+    <label class="chk"><input type="checkbox" data-check="k3-t1"><span>Neues Projekt anlegen und deine Aufnahme importieren.</span></label>
+    <label class="chk"><input type="checkbox" data-check="k3-t2"><span>Eine Stelle mit Slice teilen, den unerwünschten Teil löschen und die Lücke schließen.</span></label>
+    <label class="chk"><input type="checkbox" data-check="k3-t3"><span>Fade-in am Anfang und Fade-out am Ende setzen.</span></label>
+    <label class="chk"><input type="checkbox" data-check="k3-t4"><span>Als WAV exportieren und die Datei im Explorer anhören.</span></label>
+    <label for="k3-note" class="small">Was hat nicht sofort funktioniert? (bleibt nur in diesem Browser)</label>
+    <textarea id="k3-note" data-note="k3"></textarea>
+  </section>
+
+  <section class="step sum" id="k3-sum"><h3>Zusammenfassung</h3>
+    <ul>
+      <li>Import: <em>Import Audio/MIDI</em> oder Drag &amp; Drop. Anfangsstille prüfen.</li>
+      <li>Schneiden: Abspielkopf setzen, <em>Slice</em> oder <kbd>S</kbd>. Löschen mit <kbd>Entf</kbd>. Regionen ziehen.</li>
+      <li>Lautstärke: <em>Region Gain</em>, <em>Normalize</em>, Spurlautstärke. Fades gegen Klicken. Übersteuerung vermeiden.</li>
+      <li>Mehrere Spuren: Sprache klar vorn. Effekte dezent.</li>
+      <li>Export (Web): Project › Download › Mixdown As, als M4A oder WAV. Für MP3 danach Audacity.</li>
+    </ul>
+    <button type="button" class="btn" data-go="praxis">Weiter zur Praxisaufgabe</button>
+  </section>
+</section>
+
+<!-- ================= PRAXIS ================= -->
+<section class="view" id="v-praxis" aria-labelledby="h-praxis" hidden>
+  <h2 id="h-praxis" tabindex="-1">Praxisaufgabe: Redaktionsauftrag</h2>
+  <p class="lede">Mach aus deiner eigenen Aufnahme einen veröffentlichungsreifen Beitrag.</p>
+
+  <section class="step goal"><h3>Auftrag</h3>
+    <p>Die Redaktion hat deine Aufnahme erhalten und braucht eine saubere Fassung: ohne Räuspern, ohne lange Pausen, gleichmäßig laut, mit weichem Anfang und Ende. Wenn du magst, legst du eine Musik- oder Atmospur darunter.</p>
+    <p><strong>Material:</strong> deine eigene Aufnahme (Sprache, ca. 1–3 Minuten). Für eine zweite Spur eine freie Musik- oder Klangdatei (Lizenz vorher prüfen).</p></section>
+
+  <section class="step"><h3>1. Format beurteilen</h3>
+    <p>Wähle das Format deiner Datei und lies die Empfehlung.</p>
+    <div class="widget" data-w="decider"></div></section>
+
+  <section class="step"><h3>2. Arbeitsschritte</h3>
+    <ol class="cards">
+      <li><h4>Format bestimmen und begründen</h4><p>Notiere: Welches Format hat deine Datei? Ist eine Konvertierung nötig, und warum?</p><label class="done"><input type="checkbox" data-check="p-s1"> Erledigt</label></li>
+      <li><h4>Gegebenenfalls konvertieren</h4><p>In Audacity als WAV exportieren (Kopie, Original behalten, Schema beachten).</p><label class="done"><input type="checkbox" data-check="p-s2"> Erledigt</label></li>
+      <li><h4>In BandLab importieren</h4><p>Neues Projekt, Datei importieren, Anfang kontrollieren.</p><label class="done"><input type="checkbox" data-check="p-s3"> Erledigt</label></li>
+      <li><h4>Schneiden</h4><p>Räuspern, lange Pausen, Versprecher und Stille am Anfang entfernen. Regionen aneinanderschieben.</p><label class="done"><input type="checkbox" data-check="p-s4"> Erledigt</label></li>
+      <li><h4>Lautstärke anpassen</h4><p>Region Gain oder Normalize. Keine Übersteuerung.</p><label class="done"><input type="checkbox" data-check="p-s5"> Erledigt</label></li>
+      <li><h4>Fades setzen</h4><p>Fade-in am Anfang, Fade-out am Ende, bei Bedarf kurze Fades an Schnittstellen.</p><label class="done"><input type="checkbox" data-check="p-s6"> Erledigt</label></li>
+      <li><h4>Optional: zweite Spur und Effekt</h4><p>Musik oder Atmo auf eine zweite Spur, deutlich leiser als die Sprache. Ein dezenter Effekt auf der Sprachspur.</p><label class="done"><input type="checkbox" data-check="p-s7"> Erledigt</label></li>
+      <li><h4>Exportieren</h4><p>Mixdown als WAV (oder M4A) herunterladen. Wähle das Ausgabeformat bewusst und begründe es. Benenne die Datei nach dem Schema.</p><label class="done"><input type="checkbox" data-check="p-s8"> Erledigt</label></li>
+      <li><h4>Zusatz: MP3 erzeugen</h4><p>Wenn die Veröffentlichung MP3 verlangt: WAV in Audacity als Mono-MP3 mit 128 kbit/s exportieren.</p><label class="done"><input type="checkbox" data-check="p-s9"> Erledigt</label></li>
+    </ol></section>
+
+  <section class="step"><h3>3. Selbstcheck</h3>
+    <p>Höre dein Ergebnis einmal komplett mit Kopfhörern und hake nur ab, was wirklich stimmt.</p>
+    <div id="pCrit">
+    <label class="chk"><input type="checkbox" data-check="p-k1"><span>Ich kann das Ausgangsformat nennen und begründen, ob ich konvertieren musste.</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k2"><span>Das Original ist unverändert erhalten, die Kopie hat einen sinnvollen Namen.</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k3"><span>Der Import in BandLab hat geklappt, die Anfangsstille ist geprüft.</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k4"><span>Unerwünschte Stellen sind entfernt, und es wurde keine Sprache abgeschnitten.</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k5"><span>An den Schnittstellen ist kein Klicken oder Knacken zu hören.</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k6"><span>Die Sprache ist gleichmäßig laut und klar, ohne Verzerrung.</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k7"><span>Anfang und Ende blenden weich ein und aus (Fades).</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k8"><span>Falls eine zweite Spur genutzt wurde: Sie ist leiser als die Sprache, die Sprache bleibt gut verständlich. (Ohne zweite Spur: trifft zu.)</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k9"><span>Ich habe die exportierte Datei komplett angehört und das Ausgabeformat begründet gewählt.</span></label>
+    <label class="chk"><input type="checkbox" data-check="p-k10"><span>Dateiname und Ordner folgen dem Schema, und ich finde alles wieder.</span></label>
+    </div>
+    <p class="out" id="pCount" aria-live="polite">0 von 10 Kriterien erfüllt.</p>
+    <label for="p-note1" class="small">Reflexion 1: Welche Entscheidung (Format, Schnitt, Lautstärke, Export) war die wichtigste, und warum?</label>
+    <textarea id="p-note1" data-note="p1"></textarea>
+    <label for="p-note2" class="small">Reflexion 2: Was würdest du beim nächsten Mal anders machen?</label>
+    <textarea id="p-note2" data-note="p2"></textarea>
+    <div class="btnrow"><button type="button" class="btn ghost" id="printBtn">Diese Seite drucken</button></div>
+    <p class="small">Abgabe: nach Vorgabe deiner Lehrkraft (z. B. exportierte Datei plus ausgefüllte Checkliste).</p>
+  </section>
+</section>
+
+<!-- ================= TEST ================= -->
+<section class="view" id="v-test" aria-labelledby="h-test" hidden>
+  <h2 id="h-test" tabindex="-1">Abschlusstest</h2>
+  <p class="lede">20 Fragen zu allen drei Lernbereichen. Antworte in Ruhe, die Auswertung erklärt jede Antwort.</p>
+  <div id="testRoot"></div>
+</section>
+
+<!-- ================= GLOSSAR ================= -->
+<section class="view" id="v-glossar" aria-labelledby="h-glossar" hidden>
+  <h2 id="h-glossar" tabindex="-1">Glossar</h2>
+  <p class="lede">Die wichtigsten Fachbegriffe alphabetisch.</p>
+  <dl class="gl-list" id="glList"></dl>
+</section>
+
+<!-- ================= QUELLEN ================= -->
+<section class="view" id="v-quellen" aria-labelledby="h-quellen" hidden>
+  <h2 id="h-quellen" tabindex="-1">Quellen und weiterführende Informationen</h2>
+  <p class="lede">Diese Seiten wurden für die Inhalte geprüft (Stand: 20.09.2026). Bei Abweichungen gilt die Hilfeseite des Herstellers.</p>
+  <div class="step"><h3>BandLab Help Center</h3>
+    <ul class="src">
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/360036010533-Supported-Import-and-Export-File-Formats" target="_blank" rel="noopener">Supported Import and Export File Formats</a> (Import- und Exportformate)</li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/900003008403-Importing-Audio-and-MIDI-Files" target="_blank" rel="noopener">Importing Audio and MIDI Files</a></li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/57252800910745-Slicing-and-Merging-Regions" target="_blank" rel="noopener">Slicing and Merging Regions</a></li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/57253403645849-Renaming-and-Deleting-Regions" target="_blank" rel="noopener">Renaming and Deleting Regions</a></li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/900003878046-Editing-Audio-Regions" target="_blank" rel="noopener">Editing Audio Regions</a> (Fades, Normalize, Region Gain)</li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/115002945473-Adding-Effects" target="_blank" rel="noopener">Adding Effects</a></li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/115002959774-Downloading-Mixdowns-and-Tracks" target="_blank" rel="noopener">Downloading Mixdowns and Tracks</a> (Export)</li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/115002945433-Track-and-Project-Duration-Limits" target="_blank" rel="noopener">Track and Project Duration Limits</a> (16 Spuren, 15 Minuten)</li>
+      <li><a href="https://help.bandlab.com/hc/en-us/articles/115002945153-Getting-started-on-BandLab" target="_blank" rel="noopener">Getting Started with the BandLab Studio</a></li>
+    </ul></div>
+  <div class="step"><h3>Audacity</h3>
+    <ul class="src">
+      <li><a href="https://manual.audacityteam.org/man/export_formats_supported_by_audacity.html" target="_blank" rel="noopener">Export Formats supported by Audacity</a></li>
+      <li><a href="https://www.audacityteam.org/manual/getting-started/export-your-audio/" target="_blank" rel="noopener">Export your audio</a> (Empfehlungen zu Bitraten, Mono/Stereo)</li>
+      <li><a href="https://manual.audacityteam.org/man/faq_installing_the_ffmpeg_import_export_library.html" target="_blank" rel="noopener">Installing the FFmpeg Import/Export Library</a></li>
+      <li><a href="https://manual.audacityteam.org/man/faq_opening_and_saving_files.html" target="_blank" rel="noopener">FAQ: Opening and Saving Files</a></li>
+    </ul></div>
+  <div class="step"><h3>Technische Hinweise zu dieser Website</h3>
+    <ul>
+      <li>Keine externen Bibliotheken, Schriften oder Bilder. Nur die Links oben sind extern.</li>
+      <li>Die Darstellungen der BandLab-Oberfläche und des Schnitt-Simulators sind vereinfachte Modelle, keine Abbildungen der echten Programme.</li>
+      <li>Größen im Rechner: 1 MB = 1.048.576 Byte (so zeigt es der Windows-Explorer). Der FLAC-Wert ist ein Faustwert. Der Generationsverlust-Regler ist eine Veranschaulichung, keine Messung.</li>
+      <li>Die Lautstärke-Orientierungswerte im Mixer-Widget sind Faustregeln aus der Praxis und keine Vorgaben von BandLab.</li>
+      <li>Nicht einzeln geprüft: deutsche Beschriftungen der BandLab-Oberfläche und Menünamen älterer Audacity-Versionen.</li>
+    </ul></div>
+</section>
+
+  </main>
+</div>
+<script>
+/* =====================================================================
+   3a) Grundfunktionen, Zustand, Fortschritt
+   ===================================================================== */
+'use strict';
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+/** Kleiner DOM-Helfer: h('div', {class:'x', onclick:fn}, kind1, kind2 …) */
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  if (props) for (const k in props) {
+    const v = props[k];
+    if (v === false || v == null) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'html') e.innerHTML = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, '');
+    else e.setAttribute(k, v);
+  }
+  kids.flat().forEach(c => { if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(c)); });
+  return e;
+}
+const icon = n => `<svg class="ic" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const de = (n, d = 1) => n.toLocaleString('de-DE', { maximumFractionDigits: d, minimumFractionDigits: d });
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#000';
+
+/* ---------- Zustand (localStorage, mit Fallback ohne Speicherung) ---------- */
+const KEY = 'sound-werkstatt-v1';
+let state = { done: {}, score: {}, checks: {}, notes: {}, test: null };
+function load() { try { const r = localStorage.getItem(KEY); if (r) state = Object.assign(state, JSON.parse(r)); } catch (e) { /* kein Speicher verfügbar */ } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignorieren */ } }
+
+/* ---------- Aufgaben-Register & Fortschritt ---------- */
+const REG = {};                       // id -> true (alle vorhandenen Aufgaben)
+const reg = id => { REG[id] = true; };
+const VIEWS = [
+  { id: 'start',   label: 'Start' },
+  { id: 'k1',      label: 'Kapitel 1: Audio-Dateiformate' },
+  { id: 'k2',      label: 'Kapitel 2: Konvertierung' },
+  { id: 'k3',      label: 'Kapitel 3: BandLab' },
+  { id: 'praxis',  label: 'Praxisaufgabe' },
+  { id: 'test',    label: 'Abschlusstest' },
+  { id: 'glossar', label: 'Glossar' },
+  { id: 'quellen', label: 'Quellen' }
+];
+const GROUP = id => id === 'test' ? 'test' : id.startsWith('p-') ? 'praxis' : id.split('-')[0];
+function markDone(id, ok) {
+  if (!state.done[id]) { state.done[id] = true; if (ok != null) state.score[id] = !!ok; save(); }
+  updateProgress();
+}
+function unmark(id) { if (state.done[id]) { delete state.done[id]; save(); updateProgress(); } }
+
+function updateProgress() {
+  const tot = { }, dn = { };
+  Object.keys(REG).forEach(id => { const g = GROUP(id); tot[g] = (tot[g] || 0) + 1; if (state.done[id]) dn[g] = (dn[g] || 0) + 1; });
+  const all = Object.keys(REG).length, allDone = Object.keys(REG).filter(id => state.done[id]).length;
+  const pct = all ? Math.round(allDone / all * 100) : 0;
+  $('#totalPct').textContent = pct + ' %';
+  $('#totalBar').setAttribute('aria-valuenow', pct);
+  $('#totalBar i').style.width = pct + '%';
+  $('#topBar').style.width = pct + '%'; $('#topPct').textContent = pct + ' %';
+  VIEWS.forEach(v => {
+    const st = $('#st-' + v.id); if (!st) return;
+    const g = v.id, n = dn[g] || 0, m = tot[g] || 0;
+    if (!m) { st.textContent = ''; return; }
+    if (n === m) { st.textContent = '✔ fertig'; st.classList.add('full'); }
+    else { st.textContent = n + '/' + m; st.classList.remove('full'); }
+  });
+  $$('.ex[data-id]').forEach(ex => {
+    const id = ex.dataset.id, d = !!state.done[id];
+    ex.classList.toggle('is-done', d);
+    let b = $('.ex-badge', ex);
+    if (d && !b) ex.append(h('span', { class: 'ex-badge' }, 'bearbeitet'));
+    if (!d && b) b.remove();
+  });
+}
+
+/* ---------- Navigation ---------- */
+function buildNav() {
+  const nav = $('#nav');
+  VIEWS.forEach((v, i) => {
+    if (i === 1 || i === 6) nav.append(h('li', {}, h('hr')));
+    nav.append(h('li', {}, h('button', { type: 'button', 'data-view': v.id, onclick: () => show(v.id) },
+      h('span', {}, v.label), h('span', { class: 'st', id: 'st-' + v.id }))));
+  });
+}
+function show(id) {
+  if (!VIEWS.some(v => v.id === id)) id = 'start';
+  $$('.view').forEach(v => { v.hidden = v.id !== 'v-' + id; });
+  $$('#nav button').forEach(b => b.removeAttribute('aria-current'));
+  const nb = $('#nav button[data-view="' + id + '"]'); if (nb) nb.setAttribute('aria-current', 'page');
+  try { history.replaceState(null, '', '#' + id); } catch (e) { /* file:// in manchen Browsern */ }
+  window.scrollTo(0, 0);
+  const hd = $('#v-' + id + ' h1, #v-' + id + ' h2'); if (hd) hd.focus({ preventScroll: true });
+  $('#side').classList.remove('open'); $('#menuBtn').setAttribute('aria-expanded', 'false');
+  if (id === 'start') drawHero();
+}
+
+/* ---------- Glossar ---------- */
+const GL = {
+  abtastrate: ['Abtastrate', 'Wie oft pro Sekunde das Audiosignal gemessen wird, in Hertz (Hz). CD-Qualität: 44.100 Hz, im Videobereich oft 48.000 Hz.'],
+  abspielkopf: ['Abspielkopf (Playhead)', 'Die senkrechte Linie in der Timeline. Sie zeigt die aktuelle Position und markiert die Stelle, an der geschnitten wird.'],
+  bittiefe: ['Bittiefe', 'Wie fein jeder Messwert aufgelöst wird. 16 Bit ist der CD-Standard, 24 Bit ist bei Aufnahmen verbreitet.'],
+  bitrate: ['Bitrate', 'Datenmenge pro Sekunde bei komprimierten Formaten, in kbit/s. Höhere Bitrate bedeutet meist bessere Qualität und größere Dateien.'],
+  clipping: ['Clipping (Übersteuerung)', 'Signalspitzen über der Maximalgrenze (0 dB) werden abgeschnitten. Das klingt verzerrt.'],
+  codec: ['Codec', 'Verfahren, das Audio kodiert (meist komprimiert) und wieder dekodiert. MP3 und AAC sind Codecs.'],
+  container: ['Container', 'Dateiformat, das kodierte Audiodaten samt Zusatzinformationen verpackt. M4A ist ein Container, der meist AAC enthält.'],
+  daw: ['DAW', 'Digital Audio Workstation: Software zum Aufnehmen, Bearbeiten und Mischen von Audio. Das BandLab Studio ist eine DAW im Browser.'],
+  fade: ['Fade', 'Weiches Ein- oder Ausblenden der Lautstärke am Anfang oder Ende einer Region. Hilft gegen Klicken an Schnittstellen.'],
+  ffmpeg: ['FFmpeg', 'Freie Zusatzbibliothek, mit der Audacity weitere Formate (z. B. M4A/AAC) importieren und exportieren kann.'],
+  generationsverlust: ['Generationsverlust', 'Qualitätsverlust, der entsteht, wenn eine verlustbehaftete Datei mehrfach hintereinander neu kodiert wird.'],
+  mixdown: ['Mixdown', 'Das Zusammenrechnen aller Spuren zu einer fertigen Audiodatei.'],
+  normalize: ['Normalisieren', 'Hebt oder senkt eine Region so, dass ihre lauteste Stelle einen festen Zielpegel erreicht.'],
+  pcm: ['PCM', 'Unkomprimierte digitale Audiodaten: die Messwerte einfach nacheinander. Steckt üblicherweise in WAV-Dateien.'],
+  region: ['Region', 'Ein Abschnitt Audio auf einer Spur. Jede Region lässt sich einzeln schneiden, verschieben und bearbeiten.'],
+  spur: ['Spur (Track)', 'Eine Zeile in der Timeline, auf der Regionen liegen. Mehrere Spuren laufen gleichzeitig, z. B. Sprache und Musik.'],
+  verlustbehaftet: ['Verlustbehaftet', 'Kompression, die Informationen dauerhaft entfernt, die kaum hörbar sein sollen (MP3, AAC). Zurückholen ist nicht möglich.'],
+  verlustfrei: ['Verlustfrei', 'Speicherung, aus der sich das Original vollständig zurückgewinnen lässt (WAV unkomprimiert, FLAC komprimiert).']
+};
+function initGlossary() {
+  $$('.view').forEach(v => {
+    v.innerHTML = v.innerHTML.replace(/\[\[(\w+)\|([^\]]+)\]\]/g, (m, k, t) =>
+      GL[k] ? `<button type="button" class="gl" data-g="${k}" aria-expanded="false">${t}</button>` : t);
+  });
+  const dl = $('#glList');
+  Object.keys(GL).sort((a, b) => GL[a][0].localeCompare(GL[b][0], 'de')).forEach(k => {
+    dl.append(h('dt', {}, GL[k][0]), h('dd', {}, GL[k][1]));
+  });
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button.gl'); if (!b) return;
+    const nx = b.nextElementSibling;
+    if (nx && nx.classList.contains('gl-def')) { nx.remove(); b.setAttribute('aria-expanded', 'false'); }
+    else { b.after(h('span', { class: 'gl-def', role: 'note' }, GL[b.dataset.g][1])); b.setAttribute('aria-expanded', 'true'); }
+  });
+}
+
+/* =====================================================================
+   3b) Aufgaben-Bausteine
+   ===================================================================== */
+const feedback = (kind, ...html) => h('div', { class: 'fb ' + kind },
+  h('span', { html: icon(kind === 'ok' ? 'ok' : kind === 'bad' ? 'x' : 'info') }),
+  h('div', {}, h('p', {}, h('strong', {}, kind === 'ok' ? 'Richtig.' : kind === 'bad' ? 'Nicht ganz.' : 'Hinweis.')), ...html.filter(Boolean).map(x => h('p', { html: String(x).replace(/^(Richtig[.:]|Nein\.)\s*/, '') }))));
+
+/* --- Einfachauswahl (auch Richtig/Falsch und Szenarien) --- */
+function mountMC(root, id, d) {
+  reg(id);
+  let answered = false;
+  const out = h('div', { 'aria-live': 'polite' });
+  const btns = d.opts.map((o, i) => h('button', { type: 'button', class: 'opt', onclick: () => pick(i) },
+    h('span', { class: 'opt-mark', 'aria-hidden': 'true' }), h('span', { html: o })));
+  const fs = h('fieldset', {}, h('legend', { html: d.q }), d.story ? h('p', { class: 'story', html: d.story }) : null, h('div', { class: 'opts' }, btns), out);
+  root.append(fs);
+  function pick(i) {
+    if (answered) return; answered = true;
+    const ok = i === d.correct;
+    btns.forEach((b, j) => {
+      b.disabled = true;
+      if (j === d.correct) { b.classList.add('is-right'); $('.opt-mark', b).textContent = '✔'; }
+      if (j === i) { b.classList.add('picked'); if (!ok) { b.classList.add('is-wrong'); $('.opt-mark', b).textContent = '✘'; } }
+    });
+    out.replaceChildren(feedback(ok ? 'ok' : 'bad', (d.each && d.each[i]) || d.why),
+      h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn ghost', onclick: reset }, 'Nochmal versuchen')));
+    markDone(id, ok);
+  }
+  function reset() { answered = false; out.replaceChildren(); btns.forEach(b => { b.disabled = false; b.classList.remove('is-right', 'is-wrong', 'picked'); $('.opt-mark', b).textContent = ''; }); btns[0].focus(); }
+}
+
+/* --- Drag-and-Drop-Sortierung (mit Klick-/Tastaturbedienung) --- */
+function mountSort(root, id, d) {
+  reg(id);
+  let sel = null, checked = false;
+  const items = d.items.map((it, i) => {
+    const b = h('button', { type: 'button', class: 'token', draggable: 'true', 'aria-pressed': 'false' }, it.t);
+    b.dataset.i = i; b.dataset.t = it.t;
+    b.addEventListener('click', () => choose(b));
+    b.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', String(i)); });
+    return b;
+  });
+  const pool = h('div', { class: 'pool', 'aria-label': 'Ungeordnete Karten' }, items);
+  const out = h('div', { 'aria-live': 'polite' });
+  const status = h('p', { class: 'small', 'aria-live': 'polite' }, 'Wähle eine Karte und dann „Karte hier ablegen“, oder ziehe die Karte mit der Maus.');
+  const check = h('button', { type: 'button', class: 'btn', disabled: true, onclick: doCheck }, 'Prüfen');
+  const buckets = d.buckets.map(name => {
+    const drop = h('div', { class: 'drop', 'aria-label': name });
+    wireDrop(drop);
+    return h('div', { class: 'bucket' }, h('h4', {}, name), drop,
+      h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn ghost', onclick: () => place(sel, drop) }, 'Karte hier ablegen')));
+  });
+  wireDrop(pool);
+  root.append(h('fieldset', {}, h('legend', { html: d.q }), pool,
+    h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn ghost', onclick: () => place(sel, pool) }, 'Auswahl zurück in den Stapel')),
+    h('div', { class: 'bucket-row' }, buckets), status,
+    h('div', { class: 'btnrow' }, check, h('button', { type: 'button', class: 'btn ghost', onclick: reset }, 'Zurücksetzen')), out));
+  function wireDrop(el) {
+    el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('over'); });
+    el.addEventListener('dragleave', () => el.classList.remove('over'));
+    el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('over'); const i = e.dataTransfer.getData('text/plain'); if (i !== '') place(items[+i], el); });
+  }
+  function choose(b) {
+    if (checked) return;
+    items.forEach(x => x.setAttribute('aria-pressed', 'false'));
+    if (sel === b) { sel = null; return; }
+    sel = b; b.setAttribute('aria-pressed', 'true'); status.textContent = 'Ausgewählt: ' + b.dataset.t;
+  }
+  function place(b, target) {
+    if (checked) return;
+    if (!b) { status.textContent = 'Wähle zuerst eine Karte aus.'; return; }
+    target.append(b); b.setAttribute('aria-pressed', 'false'); sel = null; status.textContent = b.dataset.t + ' abgelegt.';
+    check.disabled = items.some(x => x.parentElement === pool);
+  }
+  function doCheck() {
+    checked = true; let all = true; const lines = [];
+    items.forEach((b, i) => {
+      const bi = buckets.findIndex(bx => bx.contains(b));
+      const ok = bi === d.items[i].b; if (!ok) all = false;
+      b.classList.add(ok ? 'is-right' : 'is-wrong'); b.textContent = (ok ? '✔ ' : '✘ ') + b.dataset.t;
+      if (!ok) lines.push('<strong>' + b.dataset.t + ':</strong> ' + d.items[i].why);
+    });
+    out.replaceChildren(all ? feedback('ok', d.why) : feedback('bad', ...lines));
+    check.disabled = true; markDone(id, all);
+  }
+  function reset() {
+    checked = false; sel = null; out.replaceChildren();
+    items.forEach(b => { b.classList.remove('is-right', 'is-wrong'); b.textContent = b.dataset.t; pool.append(b); b.setAttribute('aria-pressed', 'false'); });
+    check.disabled = true; status.textContent = 'Zurückgesetzt.';
+  }
+}
+
+/* --- Zuordnung über Auswahllisten --- */
+function mountMatch(root, id, d) {
+  reg(id);
+  const out = h('div', { 'aria-live': 'polite' });
+  const rows = d.rows.map(r => {
+    const s = h('select', { 'aria-label': r.t }, h('option', { value: '' }, 'Bitte wählen…'), d.opts.map((o, j) => h('option', { value: j }, o)));
+    return { r, s, el: h('div', { class: 'row' }, h('span', {}, r.t), s) };
+  });
+  root.append(h('fieldset', {}, h('legend', { html: d.q }), h('div', { class: 'rows' }, rows.map(x => x.el)),
+    h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn', onclick: doCheck }, 'Prüfen'),
+      h('button', { type: 'button', class: 'btn ghost', onclick: reset }, 'Zurücksetzen')), out));
+  function doCheck() {
+    if (rows.some(x => x.s.value === '')) { out.replaceChildren(feedback('neu', 'Bitte ordne zuerst jede Aussage zu.')); return; }
+    let all = true; const lines = [];
+    rows.forEach(x => {
+      const ok = +x.s.value === x.r.a; if (!ok) { all = false; lines.push('<strong>Richtig wäre ' + d.opts[x.r.a] + ':</strong> ' + x.r.why); }
+      x.el.classList.remove('is-right', 'is-wrong'); x.el.classList.add(ok ? 'is-right' : 'is-wrong');
+      x.s.setAttribute('aria-label', x.r.t + (ok ? ' (richtig)' : ' (falsch)'));
+    });
+    out.replaceChildren(all ? feedback('ok', d.why) : feedback('bad', ...lines));
+    markDone(id, all);
+  }
+  function reset() { rows.forEach(x => { x.s.value = ''; x.el.classList.remove('is-right', 'is-wrong'); }); out.replaceChildren(); }
+}
+
+/* --- Reihenfolge ordnen (Pfeil-Schaltflächen, tastaturbedienbar) --- */
+function mountOrder(root, id, d) {
+  reg(id);
+  let cur = d.items.map((_, i) => i).reverse();
+  const list = h('ol', { class: 'ol-list' }), out = h('div', { 'aria-live': 'polite' });
+  root.append(h('fieldset', {}, h('legend', { html: d.q }), list,
+    h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn', onclick: doCheck }, 'Prüfen'),
+      h('button', { type: 'button', class: 'btn ghost', onclick: () => { cur = d.items.map((_, i) => i).reverse(); render(); out.replaceChildren(); } }, 'Zurücksetzen')), out));
+  render();
+  function render(focusIdx, dir) {
+    list.replaceChildren(...cur.map((k, pos) => h('li', {},
+      h('span', { class: 'n' }, (pos + 1) + '.'), h('span', { class: 't' }, d.items[k]),
+      h('button', { type: 'button', class: 'mv', 'aria-label': 'Nach oben: ' + d.items[k], disabled: pos === 0, onclick: () => move(pos, -1) }, '↑'),
+      h('button', { type: 'button', class: 'mv', 'aria-label': 'Nach unten: ' + d.items[k], disabled: pos === cur.length - 1, onclick: () => move(pos, 1) }, '↓'))));
+    if (focusIdx != null) { const b = list.children[focusIdx].querySelectorAll('button')[dir < 0 ? 0 : 1]; if (b && !b.disabled) b.focus(); else list.children[focusIdx].querySelector('button:not(:disabled)').focus(); }
+  }
+  function move(pos, dir) { const t = pos + dir; [cur[pos], cur[t]] = [cur[t], cur[pos]]; out.replaceChildren(); render(t, dir); }
+  function doCheck() {
+    let all = true;
+    $$('li', list).forEach((li, pos) => { const ok = cur[pos] === pos; if (!ok) all = false; li.classList.remove('is-right', 'is-wrong'); li.classList.add(ok ? 'is-right' : 'is-wrong'); const n = $('.n', li); n.textContent = (ok ? '✔ ' : '✘ ') + (pos + 1) + '.'; });
+    out.replaceChildren(all ? feedback('ok', d.why) : feedback('bad', 'Diese Reihenfolge stimmt noch nicht. Richtig ist:', '<ol>' + d.items.map(x => '<li>' + x + '</li>').join('') + '</ol>', d.why));
+    markDone(id, all);
+  }
+}
+
+/* --- Zahleneingabe --- */
+function mountNum(root, id, d) {
+  reg(id);
+  let tries = 0;
+  const inp = h('input', { type: 'text', inputmode: 'decimal', id: id + '-in', 'aria-label': d.q.replace(/<[^>]+>/g, '') }), out = h('div', { 'aria-live': 'polite' });
+  root.append(h('fieldset', {}, h('legend', { html: d.q }), h('div', { class: 'btnrow', style: 'margin-top:0' }, inp, d.unit ? h('span', { style: 'align-self:center' }, d.unit) : null,
+    h('button', { type: 'button', class: 'btn', onclick: doCheck }, 'Prüfen')), out));
+  function doCheck() {
+    const v = parseFloat(inp.value.replace(',', '.'));
+    if (isNaN(v)) { out.replaceChildren(feedback('neu', 'Gib eine Zahl ein.')); return; }
+    tries++;
+    const ok = Math.abs(v - d.answer) <= d.tol;
+    if (ok) { out.replaceChildren(feedback('ok', d.why)); markDone(id, tries === 1); }
+    else if (tries >= 2) { out.replaceChildren(feedback('bad', 'Die gesuchte Zahl ist etwa <strong>' + d.answer + '</strong>.', d.why)); markDone(id, false); }
+    else out.replaceChildren(feedback('bad', d.hint || 'Rechne noch einmal nach.'));
+  }
+}
+
+/* =====================================================================
+   3c) INHALTE der Aufgaben (hier anpassen, falls sich BandLab ändert)
+   ===================================================================== */
+const DATA = {
+  /* ---------- Kapitel 1 ---------- */
+  'k1-sort': { type: 'sort', q: '<strong>Übung 1:</strong> Ordne die Formate ein: verlustfrei oder verlustbehaftet?',
+    buckets: ['Verlustfrei', 'Verlustbehaftet'],
+    items: [
+      { t: 'WAV', b: 0, why: 'WAV speichert die Rohdaten (PCM) unkomprimiert, es geht nichts verloren.' },
+      { t: 'FLAC', b: 0, why: 'FLAC komprimiert, aber verlustfrei: Das Original lässt sich exakt zurückgewinnen.' },
+      { t: 'MP3', b: 1, why: 'MP3 entfernt dauerhaft Information, die kaum hörbar sein soll.' },
+      { t: 'AAC', b: 1, why: 'AAC ist wie MP3 ein verlustbehafteter Codec.' }],
+    why: 'Genau: WAV und FLAC sind verlustfrei, MP3 und AAC verlustbehaftet.' },
+  'k1-match': { type: 'match', q: '<strong>Übung 2:</strong> Welche Beschreibung passt zu welchem Format?',
+    opts: ['WAV', 'FLAC', 'MP3', 'M4A'],
+    rows: [
+      { t: 'Unkomprimiert, sehr große Dateien, Standard für die Bearbeitung', a: 0, why: 'Unkomprimierte PCM-Daten gibt es bei WAV.' },
+      { t: 'Verlustfrei komprimiert, etwa halb so groß wie WAV', a: 1, why: 'Das beschreibt FLAC (Audacity-Handbuch: etwa halb so groß wie WAV).' },
+      { t: 'Verlustbehaftet, sehr weit verbreitet, gut für Veröffentlichung und Weitergabe', a: 2, why: 'MP3 wird fast überall abgespielt.' },
+      { t: 'Container, der meist AAC-Daten enthält', a: 3, why: 'M4A ist der Container, AAC der Codec darin.' }],
+    why: 'Alles richtig zugeordnet.' },
+  'k1-num': { type: 'num', q: '<strong>Übung 3:</strong> Wie viel mal größer ist eine Minute WAV (44,1 kHz, 16 Bit, Stereo) als eine Minute MP3 mit 128 kbit/s? Runde auf eine ganze Zahl. (Der Rechner hilft.)',
+    answer: 11, tol: 1, hint: 'Vergleiche die Zeilen „WAV“ und „MP3 128 kbit/s“ im Rechner und teile die Größen.',
+    why: '1.411.200 bit/s ÷ 128.000 bit/s ≈ 11. Die MP3 ist rund elfmal kleiner.' },
+  'k1-c1': { type: 'mc', q: '<strong>Frage 1:</strong> Du willst eine Aufnahme mehrfach bearbeiten, ohne Qualität zu verlieren. Welches Arbeitsformat wählst du?',
+    opts: ['MP3 mit 128 kbit/s', 'WAV', 'AAC mit niedriger Bitrate', 'Das Format ist egal'], correct: 1,
+    why: 'WAV ist unkomprimiert. Jede Bearbeitung startet mit voller Qualität.',
+    each: ['Nein. MP3 ist verlustbehaftet, bei jeder erneuten Kodierung geht mehr verloren.', 'Richtig. WAV ist unkomprimiert und damit ideal zum Bearbeiten.', 'Nein. AAC ist verlustbehaftet, und niedrige Bitrate verstärkt das.', 'Nein. Das Format entscheidet über Qualität und Dateigröße.'] },
+  'k1-c2': { type: 'mc', q: '<strong>Frage 2:</strong> „M4A ist ein Codec.“ Stimmt das?',
+    opts: ['Richtig', 'Falsch'], correct: 1,
+    why: 'M4A ist ein Container. Der Codec darin ist meist AAC.',
+    each: ['Nein, M4A ist ein Container (die „Verpackung“). AAC ist der Codec.', 'Richtig: M4A ist ein Container. Der Codec darin ist meist AAC.'] },
+  'k1-c3': { type: 'mc', q: '<strong>Frage 3:</strong> Wie groß ist eine Minute Sprache als MP3 mit 128 kbit/s ungefähr?',
+    opts: ['ca. 100 KB', 'ca. 1 MB', 'ca. 10 MB', 'ca. 100 MB'], correct: 1,
+    why: '128.000 bit/s ÷ 8 = 16.000 Byte pro Sekunde, mal 60 ergibt rund 960.000 Byte, also etwa 0,9 MB.' },
+  'k1-c4': { type: 'mc', q: '<strong>Frage 4 (Szenario):</strong> Dein Beitrag soll auf einer Plattform veröffentlicht werden. Sie akzeptiert MP3 und WAV, und die Hörer sollen schnell laden. Welche Datei lädst du hoch?',
+    opts: ['Die WAV-Datei, unkomprimiert', 'Eine MP3 (128 kbit/s), die aus dem WAV-Original erzeugt wurde', 'Eine MP3, die aus einer anderen MP3 neu kodiert wurde', 'Die FLAC-Datei'], correct: 1,
+    why: 'Zum Veröffentlichen ist eine kleine MP3 sinnvoll. Sie wird einmal aus dem verlustfreien Original erzeugt, so bleibt die Qualität so hoch wie möglich.',
+    each: ['Möglich, aber unnötig groß. Für Hörer ist eine MP3 praktischer.', 'Richtig. Klein, weit verbreitet und nur einmal verlustbehaftet kodiert.', 'Nein. Wieder kodieren verschlechtert die Qualität (Generationsverlust).', 'Nein. Die Plattform akzeptiert laut Aufgabe nur MP3 und WAV.'] },
+
+  /* ---------- Kapitel 2 ---------- */
+  'k2-scn': { type: 'mc', q: '<strong>Übung 1 (Szenario):</strong> Was tust du?',
+    story: 'Eine Mitschülerin schickt dir ihr Interview als FLAC-Datei. Du willst es in BandLab-Web bearbeiten.',
+    opts: ['Ich benenne die Endung von .flac in .wav um.', 'Ich öffne die Datei in Audacity und exportiere eine WAV-Kopie. Diese importiere ich in BandLab.', 'Ich lade die Datei bei einem beliebigen Online-Konverter hoch.', 'Ich importiere die FLAC-Datei immer wieder, irgendwann klappt es.'], correct: 1,
+    why: 'Audacity ist kostenlos und lokal. BandLab importiert WAV.',
+    each: ['Nein. Umbenennen ändert nur den Namen, nicht die Daten. Die Datei bleibt FLAC.', 'Richtig. Audacity liest FLAC, und die WAV-Kopie ist verlustfrei und in BandLab importierbar.', 'Nicht ideal. Das Interview enthält die Stimme einer anderen Person, und du gibst Daten aus der Hand. Nutze das lokale Audacity.', 'Nein. FLAC steht nicht in der Importliste von BandLab-Web, dadurch ändert sich nichts.'] },
+  'k2-order': { type: 'order', q: '<strong>Übung 2:</strong> Bringe den Konvertierungs-Workflow in die richtige Reihenfolge.',
+    items: ['Original sichern (Kopie anlegen)', 'Datei in Audacity öffnen', 'Datei › Audio exportieren… wählen', 'Zielformat und Qualität einstellen (Sprache: Mono)', 'Dateinamen und Ordner festlegen, speichern', 'Ergebnis anhören und Eigenschaften prüfen'],
+    why: 'Erst sichern, dann öffnen, exportieren, einstellen, benennen und am Ende kontrollieren.' },
+  'k2-gen': { type: 'mc', q: '<strong>Übung 4:</strong> Du bearbeitest eine MP3 und exportierst sie wieder als MP3. Nach drei Runden klingt sie schlechter. Was hilft?',
+    opts: ['Höhere Bitrate wählen und weiter von der MP3 ausgehen', 'Immer vom verlustfreien Original (WAV) ausgehen und nur einmal am Ende zu MP3 exportieren', 'Die MP3 in WAV umwandeln, dann ist die Qualität wieder da', 'Die Dateiendung ändern'], correct: 1,
+    why: 'Verlorene Information kommt nicht zurück.',
+    each: ['Nein. Auch bei hoher Bitrate wird die schon kodierte Datei erneut kodiert.', 'Richtig. Verlustbehaftet kodierst du nur einmal, aus dem besten vorhandenen Original.', 'Nein. Eine WAV aus einer MP3 ist zwar größer, enthält aber nicht mehr Information.', 'Nein. Die Endung ändert nichts an den Daten.'] },
+  'k2-c1': { type: 'mc', q: '<strong>Frage 1:</strong> „Wenn ich die Endung von .wav in .mp3 umbenenne, ist die Datei danach eine MP3.“ Stimmt das?',
+    opts: ['Richtig', 'Falsch'], correct: 1,
+    why: 'Nur der Name ändert sich. Konvertieren heißt, die Daten neu zu kodieren.',
+    each: ['Nein. Die Daten bleiben WAV, nur der Name ist neu.', 'Richtig. Ohne Neukodierung bleibt es eine WAV mit falscher Endung.'] },
+  'k2-c2': { type: 'mc', q: '<strong>Frage 2:</strong> In Audacity taucht M4A beim Export nicht in der Formatliste auf. Was ist die wahrscheinlichste Ursache?',
+    opts: ['Die Zusatzbibliothek FFmpeg ist nicht installiert.', 'Die Aufnahme ist zu lang.', 'Der Rechner ist zu langsam.', 'M4A gibt es nicht mehr.'], correct: 0,
+    why: 'Laut Audacity-Handbuch brauchen einige Formate, darunter M4A (AAC), die optionale FFmpeg-Bibliothek.' },
+  'k2-c3': { type: 'mc', q: '<strong>Frage 3:</strong> Du exportierst eine Mono-Sprachaufnahme als Stereo-WAV. Was passiert?',
+    opts: ['Die Datei wird doppelt so groß, ohne dass sie besser klingt.', 'Die Datei klingt doppelt so gut.', 'Die Datei wird halb so groß.', 'Es ändert sich nichts.'], correct: 0,
+    why: 'Es entstehen zwei identische Kanäle, also doppelt so viele Daten. Deshalb: Mono als Mono exportieren.' },
+  'k2-c4': { type: 'mc', q: '<strong>Frage 4:</strong> Welcher Dateiname ist am sinnvollsten?',
+    opts: ['Neue Aufnahme final final (2).wav', 'podcast_sprache_take01_roh.wav', 'aufnahme.wav', 'Interview Lena äöü!!.wav'], correct: 1,
+    why: 'Projekt, Inhalt, Version und Status sind erkennbar, ohne Leerzeichen und Sonderzeichen.' },
+
+  /* ---------- Kapitel 3 ---------- */
+  'k3-mapq': { type: 'mc', q: '<strong>Frage:</strong> Welches Element legt fest, an welcher Stelle ein Slice ausgeführt wird?',
+    opts: ['Der Spurkopf', 'Der Abspielkopf', 'Der Editor-Reiter', 'Das Projektmenü'], correct: 1,
+    why: 'Du setzt den Abspielkopf an die Schnittstelle und teilst dort die Region (Rechtsklick › Slice oder Taste S).' },
+  'k3-order': { type: 'order', q: '<strong>Übung C1:</strong> Bringe den Export in BandLab-Web in die richtige Reihenfolge.',
+    items: ['Ergebnis vorher einmal in BandLab anhören', 'Projektmenü oben links öffnen', 'Project › Download › Mixdown As wählen', 'Format wählen (WAV oder M4A)', 'Datei speichern und nach Schema benennen', 'Heruntergeladene Datei im Explorer anhören'],
+    why: 'Erst prüfen, dann exportieren, das Format wählen, sauber benennen und die fertige Datei kontrollieren.' },
+  'k3-scn': { type: 'mc', q: '<strong>Übung C2 (Szenario):</strong> Welche Kombination passt?',
+    story: 'Du lieferst drei Dateien: (a) eine Schnittfassung zum späteren Weiterbearbeiten, (b) eine kleine Datei zum Mailen, (c) eine MP3 für eine Podcast-Plattform.',
+    opts: ['(a) WAV · (b) M4A (128 kbit/s) · (c) WAV aus BandLab, danach in Audacity zu MP3', '(a) M4A · (b) WAV · (c) MP3 direkt aus BandLab-Web', '(a) MP3 · (b) MP3 · (c) MP3, jeweils direkt aus BandLab-Web', '(a) WAV · (b) WAV · (c) WAV'], correct: 0,
+    why: 'BandLab-Web gibt Mixdowns als M4A oder WAV aus. MP3 entsteht erst durch Konvertierung in Audacity.',
+    each: ['Richtig. WAV zum Weiterarbeiten, M4A klein zum Verschicken, MP3 über den Umweg Audacity.', 'Nein. BandLab-Web hat keinen MP3-Export, und zum Weiterbearbeiten ist WAV besser als M4A.', 'Nein. BandLab-Web exportiert kein MP3, und MP3 ist verlustbehaftet.', 'Nein. (b) wäre unnötig groß, und (c) verlangt MP3.'] },
+  'k3-c1': { type: 'mc', q: '<strong>Frage 1:</strong> Welche Formate importiert BandLab-Web laut Hilfe?',
+    opts: ['MP3, WAV, M4A, AAC und OGG (außerdem MP4 und MIDI)', 'Nur WAV', 'FLAC, WAV und MP3', 'Jedes Audioformat'], correct: 0,
+    why: 'FLAC steht nicht in der Importliste der Web-Version. Dann konvertierst du vorher (Kapitel 2).' },
+  'k3-c2': { type: 'mc', q: '<strong>Frage 2:</strong> Wie teilst du eine Region an der Position des Abspielkopfs?',
+    opts: ['Rechtsklick auf die Region › Slice oder Taste S', 'Taste Entf', 'Rechtsklick › Merge', 'Am Fade-Griff ziehen'], correct: 0,
+    why: 'Slice teilt eine Region in unabhängige Regionen. Merge macht das Gegenteil, Entf löscht.' },
+  'k3-c3': { type: 'mc', q: '<strong>Frage 3:</strong> „Fade-Griffe am Anfang und Ende einer Region blenden weich ein und aus und helfen gegen Klicken an Schnittstellen.“ Stimmt das?',
+    opts: ['Richtig', 'Falsch'], correct: 0,
+    why: 'Laut BandLab-Hilfe lassen sich mit Fades Klickgeräusche zwischen Regionen beseitigen. Du kannst allerdings nur eine Region gleichzeitig faden.' },
+  'k3-c4': { type: 'mc', q: '<strong>Frage 4:</strong> Was stimmt für den Export in BandLab-Web?',
+    opts: ['Mixdown als M4A oder WAV. Einzelne Abschnitte lassen sich nicht exportieren.', 'Direkt als MP3 mit 320 kbit/s', 'Nur der markierte Bereich wird exportiert', 'Es gibt nur Video-Export'], correct: 0,
+    why: 'Der Web-Mixdown ist M4A (128/192 kbit/s) oder 16-Bit-WAV mit 44,1 kHz, immer für das ganze Projekt.' }
+};
+
+function mountAll() {
+  $$('.ex[data-id]').forEach(ex => {
+    const id = ex.dataset.id, d = DATA[id];
+    if (!d) { console.warn('Keine Daten für', id); return; }
+    ({ mc: mountMC, sort: mountSort, match: mountMatch, order: mountOrder, num: mountNum })[d.type](ex, id, d);
+  });
+  const W = { calc: wCalc, gen: wGen, map: wMap, cut: wCut, lab: wLab, mix: wMix, decider: wDecider };
+  $$('.widget[data-w]').forEach(w => W[w.dataset.w](w));
+}
+
+/* =====================================================================
+   3d) Spezial-Widgets
+   ===================================================================== */
+
+/* ---------- Hero: Wellenform mit Abspielkopf ---------- */
+const hash = n => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+let heroPh = 0.32;
+function drawHero() {
+  const c = $('#heroWave'); if (!c) return;
+  const g = c.getContext('2d'), W = c.width, H = c.height;
+  g.clearRect(0, 0, W, H);
+  g.strokeStyle = css('--wave'); g.lineWidth = 2;
+  for (let x = 0; x < W; x += 4) {
+    const t = x / W, env = 0.25 + 0.75 * Math.abs(Math.sin(t * 9.3) * Math.sin(t * 2.1 + 0.6));
+    const a = env * (0.35 + 0.65 * hash(x)) * (H / 2 - 8);
+    g.beginPath(); g.moveTo(x + 2, H / 2 - a); g.lineTo(x + 2, H / 2 + a); g.stroke();
+  }
+  g.strokeStyle = css('--wave2'); g.lineWidth = 3;
+  const px = heroPh * W; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, H); g.stroke();
+  g.fillStyle = css('--wave2'); g.beginPath(); g.moveTo(px - 8, 0); g.lineTo(px + 8, 0); g.lineTo(px, 12); g.fill();
+}
+function initHero() {
+  const c = $('#heroWave'), info = $('#heroInfo'), dur = 42.0;
+  const upd = () => { info.textContent = 'Abspielkopf bei ' + de(heroPh * dur) + ' s. Klicke erneut oder nutze die Pfeiltasten (auf das Bild klicken, dann ← →).'; drawHero(); };
+  c.setAttribute('tabindex', '0');
+  c.addEventListener('click', e => { const r = c.getBoundingClientRect(); heroPh = clamp((e.clientX - r.left) / r.width, 0, 1); upd(); });
+  c.addEventListener('keydown', e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { heroPh = clamp(heroPh + (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 0.05 : 0.01), 0, 1); upd(); e.preventDefault(); } });
+}
+
+/* ---------- Größenrechner ---------- */
+function wCalc(root) {
+  const dur = h('input', { type: 'range', min: 1, max: 60, value: 3, id: 'c-dur' });
+  const ch = h('select', { id: 'c-ch' }, h('option', { value: 1 }, 'Mono'), h('option', { value: 2, selected: true }, 'Stereo'));
+  const sr = h('select', { id: 'c-sr' }, h('option', { value: 44100 }, '44.100 Hz'), h('option', { value: 48000 }, '48.000 Hz'));
+  const bt = h('select', { id: 'c-bt' }, h('option', { value: 16 }, '16 Bit'), h('option', { value: 24 }, '24 Bit'));
+  const durOut = h('span', { class: 'out' }, '3'), tbody = h('tbody');
+  root.append(h('h4', {}, 'Größenrechner: Wie groß wird die Datei?'),
+    h('div', { class: 'ctrls' }, h('label', {}, h('span', {}, 'Dauer: ', durOut, ' min'), dur), h('label', {}, 'Kanäle', ch), h('label', {}, 'Abtastrate (WAV)', sr), h('label', {}, 'Bittiefe (WAV)', bt)),
+    h('div', { class: 'tw' }, h('table', {}, h('caption', { class: 'sr-only' }, 'Berechnete Dateigrößen'), h('thead', {}, h('tr', {}, ['Format', 'Bitrate', 'Dateigröße', 'Anteil an WAV'].map(t => h('th', { scope: 'col' }, t)))), tbody)),
+    h('p', { class: 'small' }, 'Größe in MB (1 MB = 1.048.576 Byte, so zeigt es der Windows-Explorer). FLAC ist ein Faustwert (etwa die Hälfte von WAV, je nach Material). Bei MP3 ist die Bitrate fest gewählt, sie hängt nicht von Abtastrate und Bittiefe ab.'));
+  const fmt = b => b > 1073741824 ? de(b / 1073741824) + ' GB' : de(b / 1048576) + ' MB';
+  function calc() {
+    const s = +dur.value * 60; durOut.textContent = dur.value;
+    const wavBps = +sr.value * +bt.value * +ch.value;
+    const wav = wavBps / 8 * s;
+    const rows = [['WAV (unkomprimiert)', de(wavBps / 1000, 0) + ' kbit/s', wav], ['FLAC (ca.)', 'ca. ' + de(wavBps / 2000, 0) + ' kbit/s', wav / 2]];
+    [128, 192, 320].forEach(k => rows.push(['MP3 ' + k + ' kbit/s', k + ' kbit/s', k * 1000 / 8 * s]));
+    tbody.replaceChildren(...rows.map(r => h('tr', {}, h('th', { scope: 'row' }, r[0]), h('td', {}, r[1]), h('td', { class: 'out' }, fmt(r[2])), h('td', { class: 'out' }, de(r[2] / wav * 100, r[2] / wav < 0.1 ? 1 : 0) + ' %'))));
+  }
+  [dur, ch, sr, bt].forEach(x => x.addEventListener('input', calc)); calc();
+}
+
+/* ---------- Generationsverlust (Veranschaulichung) ---------- */
+function wGen(root) {
+  const c = h('canvas', { width: 900, height: 170, role: 'img', 'aria-label': 'Wellenform: Original und nach mehreren verlustbehafteten Konvertierungen' });
+  const sl = h('input', { type: 'range', min: 0, max: 10, value: 0, id: 'g-n' }), val = h('span', { class: 'out' }, '0');
+  root.append(h('h4', {}, 'Veranschaulichung: Generationsverlust'),
+    h('div', { class: 'ctrls' }, h('label', {}, h('span', {}, 'Verlustbehaftete Konvertierungen hintereinander: ', val), sl)), c,
+    h('p', { class: 'small', 'aria-live': 'polite', id: 'g-txt' }, ''),
+    h('p', { class: 'small' }, 'Vereinfachtes Modell mit frei gewählten Werten, keine Messung. Grau: Original. Farbig: nach n Konvertierungen. Mit jeder Runde gehen feine Details verloren, und Störanteile kommen dazu. Echte MP3-Kodierung ist komplizierter.'));
+  const base = (x, hf) => 0.55 * Math.sin(2 * Math.PI * x * 3) + 0.22 * Math.sin(2 * Math.PI * x * 7.3 + 1) + hf * (0.14 * Math.sin(2 * Math.PI * x * 19 + 2) + 0.09 * Math.sin(2 * Math.PI * x * 41));
+  function draw() {
+    const g = c.getContext('2d'), W = c.width, H = c.height, n = +sl.value; val.textContent = n;
+    g.clearRect(0, 0, W, H);
+    g.strokeStyle = css('--line'); g.lineWidth = 1; g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
+    const line = (col, w, f) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); for (let i = 0; i <= 600; i++) { const x = i / 600, y = H / 2 - f(x, i) * (H / 2 - 12); i ? g.lineTo(x * W, y) : g.moveTo(x * W, y); } g.stroke(); };
+    line(css('--ink2'), 2, x => base(x, 1));
+    line(css('--wave2'), 2.5, (x, i) => base(x, Math.pow(0.72, n)) + n * 0.02 * (hash(i + 7 * n) - 0.5) * 2);
+    $('#g-txt').textContent = n === 0 ? 'Original: alle feinen Details sind vorhanden.' : 'Nach ' + n + ' Konvertierung' + (n > 1 ? 'en' : '') + ': die feinen Schwankungen sind flacher geworden, dafür ist die Linie unruhiger.';
+  }
+  sl.addEventListener('input', draw); draw();
+}
+
+/* ---------- BandLab-Oberfläche erkunden (schematisch) ---------- */
+function wMap(root) {
+  reg('k3-map');
+  const HS = [
+    { id: 'menu', n: 'Projektmenü', x: 8, y: 6, w: 116, h: 30, t: 'Oben links im Studio. Hier findest du unter Project › Download › Mixdown As den Export.' },
+    { id: 'transport', n: 'Transportleiste', x: 270, y: 6, w: 180, h: 30, t: 'Zum Abspielen und Stoppen. Damit hörst du dein Projekt an, bevor du exportierst.' },
+    { id: 'ruler', n: 'Zeitlineal', x: 160, y: 44, w: 552, h: 24, t: 'Zeigt die Zeit im Projekt. Über das Lineal navigierst du und bewegst den Abspielkopf.' },
+    { id: 'head', n: 'Spurkopf', x: 4, y: 74, w: 150, h: 84, t: 'Zu jeder Spur gehört ein Kopf: Name, Lautstärkeregler und Schalter (z. B. Stumm, Solo).' },
+    { id: 'fx', n: 'Fx-Symbol', x: 104, y: 128, w: 44, h: 26, t: 'Öffnet die Effekte der Spur (auch unten links über „Effects“). Mit Add Effect fügst du Effekte hinzu.' },
+    { id: 'region', n: 'Region', x: 190, y: 78, w: 250, h: 76, t: 'Der farbige Block mit Wellenform. Jede Region lässt sich einzeln schneiden, verschieben, löschen und faden (Fade-Griffe an den oberen Ecken).' },
+    { id: 'ph', n: 'Abspielkopf', x: 322, y: 44, w: 18, h: 210, t: 'Die senkrechte Linie zeigt die aktuelle Position. Genau hier wird die Region beim Slice geteilt.' },
+    { id: 'editor', n: 'Editor-Reiter', x: 4, y: 264, w: 704, h: 72, t: 'Unten. Für die ausgewählte Region stellst du hier z. B. Region Gain (Lautstärke) ein.' }
+  ];
+  const seen = new Set();
+  const wave = (x0, y0, w, hh, seed) => { let d = ''; for (let x = 0; x < w; x += 4) { const a = (0.15 + 0.85 * hash(x + seed)) * (hh / 2 - 4) * (0.4 + 0.6 * Math.abs(Math.sin(x / 40 + seed))); d += `M${x0 + x} ${y0 + hh / 2 - a}V${y0 + hh / 2 + a}`; } return d; };
+  const svg = `<svg viewBox="0 0 720 344" role="group" aria-label="Schematische Darstellung des BandLab Studios mit anklickbaren Bereichen">
+  <rect width="720" height="344" style="fill:var(--paper)"/>
+  <rect x="0" y="0" width="720" height="40" style="fill:var(--surface);stroke:var(--line)"/>
+  <text x="18" y="26" font-size="14" style="fill:var(--ink)">☰ Projekt</text>
+  <text x="300" y="26" font-size="14" style="fill:var(--ink)">◀◀   ▶   ■   ●</text>
+  <rect x="0" y="44" width="720" height="24" style="fill:var(--surface);stroke:var(--line)"/>
+  ${[...Array(12)].map((_, i) => `<path d="M${160 + i * 46} 60v8" style="stroke:var(--ink2)"/><text x="${164 + i * 46}" y="58" font-size="9" style="fill:var(--ink2)">${i * 2}s</text>`).join('')}
+  <rect x="4" y="74" width="150" height="84" rx="4" style="fill:var(--surface);stroke:var(--line)"/>
+  <text x="12" y="94" font-size="13" style="fill:var(--ink)">Sprache</text>
+  <rect x="12" y="104" width="90" height="6" rx="3" style="fill:var(--line)"/><circle cx="70" cy="107" r="6" style="fill:var(--teal)"/>
+  <text x="12" y="146" font-size="12" style="fill:var(--ink2)">M   S</text><rect x="104" y="128" width="44" height="26" rx="4" style="fill:var(--teal-soft);stroke:var(--teal)"/><text x="115" y="146" font-size="12" style="fill:var(--ink)">Fx</text>
+  <rect x="4" y="162" width="150" height="84" rx="4" style="fill:var(--surface);stroke:var(--line)"/><text x="12" y="182" font-size="13" style="fill:var(--ink)">Musik</text>
+  <rect x="160" y="74" width="552" height="84" style="fill:var(--surface);stroke:var(--line)"/><rect x="160" y="162" width="552" height="84" style="fill:var(--surface);stroke:var(--line)"/>
+  <rect x="190" y="78" width="250" height="76" rx="4" style="fill:var(--teal-soft);stroke:var(--teal);stroke-width:2"/>
+  <path d="${wave(194, 84, 240, 64, 3)}" style="stroke:var(--teal);stroke-width:2"/>
+  <path d="M190 78l26 0-26 22z M440 78l-26 0 26 22z" style="fill:var(--teal);opacity:.55"/>
+  <rect x="200" y="166" width="450" height="76" rx="4" style="fill:var(--amber-soft);stroke:var(--amber);stroke-width:2"/>
+  <path d="${wave(204, 172, 440, 64, 9)}" style="stroke:var(--amber);stroke-width:2"/>
+  <path d="M331 44V250" style="stroke:var(--wave2);stroke-width:3"/><path d="M322 44h18l-9 12z" style="fill:var(--wave2)"/>
+  <rect x="0" y="258" width="720" height="86" style="fill:var(--surface);stroke:var(--line)"/><text x="16" y="284" font-size="13" style="fill:var(--ink)">Editor</text>
+  <text x="120" y="284" font-size="12" style="fill:var(--ink2)">Region Gain · Pitch · Speed</text><rect x="120" y="296" width="260" height="6" rx="3" style="fill:var(--line)"/><circle cx="250" cy="299" r="7" style="fill:var(--teal)"/>
+  ${HS.map((s, i) => `<g class="hs" tabindex="0" role="button" data-h="${s.id}" aria-label="${s.n}"><rect class="hit" x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="4"/><text class="seen-dot" x="${s.x + s.w - 14}" y="${s.y + 14}" font-size="13" style="fill:var(--ok);font-weight:700">✔</text></g>`).join('')}
+  </svg>`;
+  const info = h('div', { class: 'fb neu', 'aria-live': 'polite' }, h('span', { html: icon('info') }), h('div', {}, h('p', {}, 'Klicke (oder wähle per Tastatur) die gestrichelten Bereiche.')));
+  const counter = h('p', { class: 'small' }, '0 von ' + HS.length + ' Bereichen angesehen.');
+  root.append(h('h4', {}, 'Oberfläche erkunden'), h('div', { class: 'svgwrap', html: svg }), counter, info,
+    h('p', { class: 'small' }, 'Schematische Darstellung. Die echte Oberfläche sieht anders aus und kann sich ändern.'));
+  function open(g) {
+    const s = HS.find(x => x.id === g.dataset.h);
+    $$('.hs', root).forEach(x => x.classList.remove('on')); g.classList.add('on', 'seen'); seen.add(s.id);
+    info.querySelector('div').replaceChildren(h('p', {}, h('strong', {}, s.n)), h('p', {}, s.t));
+    counter.textContent = seen.size + ' von ' + HS.length + ' Bereichen angesehen.';
+    if (seen.size === HS.length) { counter.textContent += ' Alle erkundet.'; markDone('k3-map'); }
+  }
+  $$('.hs', root).forEach(g => { g.addEventListener('click', () => open(g)); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(g); } }); });
+}
+
+/* ---------- Schnitt-Simulator (vereinfachtes Modell) ---------- */
+function wCut(root) {
+  reg('k3-cut');
+  const T = 20, W = 900, H = 170, LY = 44, LH = 96;
+  const SPANS = [{ a: 0, b: 1.5, k: 's' }, { a: 1.5, b: 6, k: 'w' }, { a: 6, b: 7.2, k: 'r' }, { a: 7.2, b: 12, k: 'w' }, { a: 12, b: 15, k: 'p' }, { a: 15, b: 20, k: 'w' }];
+  const kindAt = t => (SPANS.find(s => t >= s.a && t < s.b) || SPANS[5]).k;
+  const amp = t => { const k = kindAt(t), n = hash(Math.floor(t * 40)); return k === 's' || k === 'p' ? 0.04 + 0.04 * n : k === 'r' ? 0.55 + 0.4 * n : 0.15 + 0.6 * n * Math.abs(Math.sin(t * 3.3)); };
+  let pieces, sel, ph;
+  const c = h('canvas', { width: W, height: H, tabindex: 0, role: 'application', 'aria-label': 'Schnitt-Simulator. Pfeiltasten bewegen den Abspielkopf, S teilt die ausgewählte Region, Entf löscht sie.' });
+  const readout = h('p', { class: 'out', 'aria-live': 'polite' }), out = h('div', { 'aria-live': 'polite' });
+  const btn = (t, f, cls) => h('button', { type: 'button', class: 'btn ' + (cls || 'ghost'), onclick: f }, t);
+  root.append(h('h4', {}, 'Schnitt-Simulator: Sprache freischneiden'),
+    h('p', { html: '<strong>Aufgabe:</strong> Entferne die Stille am Anfang, das Räuspern und die lange Pause. Schiebe die drei Sprachteile so zusammen, dass keine Lücke bleibt.' }),
+    h('ul', { class: 'small' }, h('li', {}, 'Stille am Anfang: 0,0 bis 1,5 s'), h('li', {}, 'Sprache 1: 1,5 bis 6,0 s · Räuspern: 6,0 bis 7,2 s'), h('li', {}, 'Sprache 2: 7,2 bis 12,0 s · lange Pause: 12,0 bis 15,0 s · Sprache 3: 15,0 bis 20,0 s')),
+    c, readout,
+    h('div', { class: 'btnrow' }, btn('Abspielkopf −0,1 s', () => mv(-0.1)), btn('Abspielkopf +0,1 s', () => mv(0.1)), btn('Slice (S)', slice), btn('Löschen (Entf)', del), btn('Lücken schließen', close)),
+    h('div', { class: 'btnrow' }, btn('Prüfen', check, ''), btn('Zurücksetzen', reset)), out,
+    h('p', { class: 'small' }, 'Vereinfachtes Modell. In BandLab setzt du den Abspielkopf per Klick und schiebst Regionen mit der Maus. Hier schließt eine Schaltfläche alle Lücken auf einmal. Klicke ins Bild, um Abspielkopf und Region zu wählen.'));
+  const len = p => p.b - p.a;
+  function reset() { pieces = [{ a: 0, b: T, pos: 0 }]; sel = null; ph = 0; out.replaceChildren(); draw(); }
+  function draw() {
+    const g = c.getContext('2d'), sc = W / T; g.clearRect(0, 0, W, H);
+    g.font = '12px sans-serif'; g.fillStyle = css('--ink2'); g.strokeStyle = css('--line'); g.lineWidth = 1;
+    for (let s = 0; s <= T; s += 1) { g.beginPath(); g.moveTo(s * sc, 26); g.lineTo(s * sc, s % 5 ? 34 : 40); g.stroke(); if (s % 5 === 0) g.fillText(s + ' s', s * sc + 3, 20); }
+    g.fillStyle = css('--paper'); g.fillRect(0, LY, W, LH);
+    pieces.forEach(p => {
+      const x0 = p.pos * sc, w = len(p) * sc, on = p === sel;
+      g.fillStyle = on ? css('--teal-soft') : css('--surface'); g.fillRect(x0, LY + 2, w, LH - 4);
+      g.strokeStyle = on ? css('--focus') : css('--teal'); g.lineWidth = on ? 4 : 2; g.strokeRect(x0 + 1, LY + 3, w - 2, LH - 6);
+      g.strokeStyle = css('--wave'); g.lineWidth = 2;
+      for (let x = 0; x < w - 2; x += 3) { const t = p.a + x / sc, a = amp(t) * (LH / 2 - 8), cy = LY + LH / 2; g.beginPath(); g.moveTo(x0 + x + 1, cy - a); g.lineTo(x0 + x + 1, cy + a); g.stroke(); }
+    });
+    const px = ph * sc; g.strokeStyle = css('--wave2'); g.lineWidth = 3; g.beginPath(); g.moveTo(px, 22); g.lineTo(px, LY + LH + 8); g.stroke();
+    readout.textContent = 'Abspielkopf: ' + de(ph) + ' s · Ausgewählte Region: ' + (sel ? de(sel.a) + '–' + de(sel.b) + ' s der Quelle, Position ' + de(sel.pos) + ' s' : 'keine');
+  }
+  function mv(d) { ph = clamp(Math.round((ph + d) * 100) / 100, 0, T); draw(); }
+  function slice() {
+    const p = pieces.find(q => ph > q.pos + 0.005 && ph < q.pos + len(q) - 0.005);
+    if (!p) { out.replaceChildren(feedback('neu', 'An dieser Stelle liegt keine Region, die sich teilen lässt. Setze den Abspielkopf in eine Region.')); return; }
+    out.replaceChildren();
+    const m = p.a + (ph - p.pos), n = { a: m, b: p.b, pos: ph }; p.b = m; pieces.push(n); sel = null; draw();
+  }
+  function del() { if (!sel) { out.replaceChildren(feedback('neu', 'Wähle zuerst eine Region aus (ins Bild klicken).')); return; } pieces = pieces.filter(p => p !== sel); sel = null; out.replaceChildren(); draw(); }
+  function close() { pieces.sort((x, y) => x.pos - y.pos); let cur = 0; pieces.forEach(p => { p.pos = cur; cur += len(p); }); draw(); }
+  function check() {
+    const ps = pieces.slice().sort((x, y) => x.pos - y.pos), ov = (p, a, b) => Math.max(0, Math.min(p.b, b) - Math.max(p.a, a));
+    const sum = (a, b) => ps.reduce((s, p) => s + ov(p, a, b), 0);
+    const still = sum(0, 1.5), rae = sum(6, 7.2), pau = sum(12, 15), sp = sum(1.5, 6) + sum(7.2, 12) + sum(15, 20), loss = 14.3 - sp;
+    const L = [];
+    if (still > 0.3) L.push('Von der Stille am Anfang sind noch ' + de(still) + ' s übrig.');
+    if (rae > 0.15) L.push('Vom Räuspern sind noch ' + de(rae) + ' s übrig.');
+    if (pau > 0.3) L.push('Von der langen Pause sind noch ' + de(pau) + ' s übrig.');
+    if (loss > 0.3) L.push('Du hast ' + de(loss) + ' s Sprache weggeschnitten.');
+    let gaps = ps.length ? Math.abs(ps[0].pos) : 0, order = true;
+    for (let i = 1; i < ps.length; i++) { gaps += Math.abs(ps[i].pos - (ps[i - 1].pos + len(ps[i - 1]))); if (ps[i].a < ps[i - 1].b - 0.01) order = false; }
+    if (gaps > 0.15) L.push('Zwischen den Regionen (oder am Anfang) sind noch Lücken. Nutze „Lücken schließen“.');
+    if (!order) L.push('Die Reihenfolge der Sprachteile stimmt nicht.');
+    if (!ps.length) L.push('Es ist nichts mehr übrig.');
+    if (L.length) out.replaceChildren(feedback('bad', '<ul>' + L.map(x => '<li>' + x + '</li>').join('') + '</ul>'));
+    else { out.replaceChildren(feedback('ok', 'Sauber geschnitten: Stille, Räuspern und Pause sind entfernt, alle Sprachteile sind erhalten und liegen ohne Lücke hintereinander. In BandLab setzt du an den Schnittstellen zusätzlich kurze Fades gegen Klicken.')); markDone('k3-cut', true); }
+  }
+  c.addEventListener('click', e => { const r = c.getBoundingClientRect(), t = (e.clientX - r.left) / r.width * T; ph = clamp(Math.round(t * 20) / 20, 0, T); sel = pieces.find(p => t >= p.pos && t < p.pos + len(p)) || null; draw(); });
+  c.addEventListener('keydown', e => {
+    const k = e.key;
+    if (k === 'ArrowLeft') mv(e.shiftKey ? -1 : -0.1); else if (k === 'ArrowRight') mv(e.shiftKey ? 1 : 0.1);
+    else if (k === 's' || k === 'S') slice(); else if (k === 'Delete' || k === 'Backspace') del();
+    else if (k === 'Tab') return; else return;
+    e.preventDefault();
+  });
+  reset();
+}
+
+/* ---------- Lautstärke- und Fade-Labor ---------- */
+function wLab(root) {
+  reg('k3-lab');
+  const W = 900, H = 180, DUR = 8;
+  const c = h('canvas', { width: W, height: H, role: 'img', 'aria-label': 'Wellenform mit einstellbarer Lautstärke und Fades' });
+  const rng = (id, min, max, step, val) => h('input', { type: 'range', id, min, max, step, value: val });
+  const gain = rng('l-g', -12, 24, 1, 0), fin = rng('l-i', 0, 2, 0.1, 0), fout = rng('l-o', 0, 3, 0.1, 0);
+  const vg = h('span', { class: 'out' }), vi = h('span', { class: 'out' }), vo = h('span', { class: 'out' });
+  const status = h('p', { class: 'out', 'aria-live': 'polite' }), out = h('div', { 'aria-live': 'polite' });
+  root.append(h('h4', {}, 'Labor: Lautstärke und Fades'),
+    h('p', { html: '<strong>Aufgabe:</strong> Hole die Aufnahme lauter, sodass die lauteste Stelle zwischen −6 und −1 dB liegt (laut, aber ohne Übersteuerung). Setze außerdem ein Fade-in von mindestens 0,5 s und ein Fade-out von mindestens 1 s.' }),
+    h('div', { class: 'ctrls' }, h('label', {}, h('span', {}, 'Lautstärke-Änderung: ', vg, ' dB'), gain), h('label', {}, h('span', {}, 'Fade-in: ', vi, ' s'), fin), h('label', {}, h('span', {}, 'Fade-out: ', vo, ' s'), fout)),
+    c, status, h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn', onclick: check }, 'Prüfen')), out,
+    h('p', { class: 'small' }, 'Modell: Die Aufnahme beginnt bei einer lautesten Stelle von −12 dB. 0 dB ist die Grenze, darüber wird abgeschnitten (Clipping). Für die Übung gewählte Zielwerte, keine BandLab-Vorgabe. In BandLab: Region Gain im Editor-Reiter, Normalize per Rechtsklick, Fades an den Griffen.'));
+  const base = t => 0.25 * (0.3 + 0.7 * Math.abs(Math.sin(t * 5.1) * Math.sin(t * 1.3 + 1)));
+  const peak = () => -12 + +gain.value;
+  function draw() {
+    const g = c.getContext('2d'), cy = H / 2, S = H / 2 - 10, lin = Math.pow(10, +gain.value / 20);
+    vg.textContent = (+gain.value > 0 ? '+' : '') + gain.value; vi.textContent = de(+fin.value); vo.textContent = de(+fout.value);
+    g.clearRect(0, 0, W, H);
+    g.strokeStyle = css('--bad'); g.setLineDash([6, 5]); g.lineWidth = 1.5;
+    [cy - S, cy + S].forEach(y => { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }); g.setLineDash([]);
+    g.fillStyle = css('--bad'); g.font = '12px sans-serif'; g.fillText('0 dB (Grenze)', 6, cy - S + 14);
+    let clipped = false;
+    for (let x = 0; x < W; x += 3) {
+      const t = x / W * DUR; let env = 1;
+      if (+fin.value > 0 && t < +fin.value) env = Math.min(env, t / +fin.value);
+      if (+fout.value > 0 && t > DUR - +fout.value) env = Math.min(env, (DUR - t) / +fout.value);
+      let a = base(t) * lin * env; const cl = a > 1; if (cl) { a = 1; clipped = true; }
+      g.strokeStyle = cl ? css('--wave2') : css('--wave'); g.lineWidth = cl ? 3 : 2;
+      g.beginPath(); g.moveTo(x + 1, cy - a * S); g.lineTo(x + 1, cy + a * S); g.stroke();
+    }
+    const p = peak();
+    status.textContent = 'Lauteste Stelle: ' + de(p, 0) + ' dB' + (p > 0 ? ' · ✘ Übersteuerung: Spitzen werden abgeschnitten (orange Balken).' : p >= -6 ? ' · laut, keine Übersteuerung.' : ' · noch recht leise.');
+  }
+  function check() {
+    const p = peak(), L = [];
+    if (p > 0) L.push('Die Aufnahme ist übersteuert (Spitzen über 0 dB). Senke die Lautstärke.');
+    else if (p < -6) L.push('Die lauteste Stelle liegt bei ' + de(p, 0) + ' dB. Hole die Aufnahme noch lauter (Ziel: −6 bis −1 dB).');
+    else if (p > -1) L.push('Zu nah an der Grenze. Lasse etwas Abstand (Ziel: höchstens −1 dB).');
+    if (+fin.value < 0.5) L.push('Das Fade-in ist zu kurz (mindestens 0,5 s).');
+    if (+fout.value < 1) L.push('Das Fade-out ist zu kurz (mindestens 1 s).');
+    if (L.length) out.replaceChildren(feedback('bad', '<ul>' + L.map(x => '<li>' + x + '</li>').join('') + '</ul>'));
+    else { out.replaceChildren(feedback('ok', 'Laut, sauber ausgesteuert und weich ein- und ausgeblendet. Genau so gehst du in BandLab vor, und du hörst zur Kontrolle einmal komplett durch.')); markDone('k3-lab', true); }
+  }
+  [gain, fin, fout].forEach(x => x.addEventListener('input', draw)); draw();
+}
+
+/* ---------- Mixer: Sprache und Musik ---------- */
+function wMix(root) {
+  reg('k3-mix');
+  const rng = (id, min, max, val) => h('input', { type: 'range', id, min, max, step: 1, value: val });
+  const v = rng('m-v', -12, 0, -3), m = rng('m-m', -40, 0, -3), vv = h('span', { class: 'out' }), vm = h('span', { class: 'out' });
+  const bar = h('div', { class: 'bar', style: 'height:14px', 'aria-hidden': 'true' }, h('i')), status = h('p', { class: 'out', 'aria-live': 'polite' }), out = h('div', { 'aria-live': 'polite' });
+  root.append(h('h4', {}, 'Mixer: Sprache vor Musik'),
+    h('p', { html: '<strong>Aufgabe:</strong> Stelle die Spuren so ein, dass die Sprache klar im Vordergrund steht, die Musik aber noch hörbar bleibt.' }),
+    h('div', { class: 'ctrls' }, h('label', {}, h('span', {}, 'Spur Sprache: ', vv, ' dB'), v), h('label', {}, h('span', {}, 'Spur Musik: ', vm, ' dB'), m)),
+    h('p', { class: 'small', id: 'm-lbl' }, 'Abstand Sprache zu Musik:'), bar, status,
+    h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn', onclick: check }, 'Passt so')), out,
+    h('p', { class: 'small' }, 'Die Bereiche sind Orientierungswerte aus der Praxis, keine Vorgaben von BandLab. Entscheidend ist immer dein Gehör mit Kopfhörern.'));
+  const diff = () => +v.value - +m.value;
+  function upd() {
+    const d = diff(); vv.textContent = v.value; vm.textContent = m.value;
+    $('i', bar).style.width = clamp(d / 40 * 100, 0, 100) + '%';
+    status.textContent = 'Abstand: ' + d + ' dB · ' + (d < 6 ? '✘ Die Musik übertönt die Sprache.' : d < 12 ? 'Sprache verständlich, aber die Musik ist noch sehr präsent.' : d <= 25 ? '✔ Sprache klar im Vordergrund, Musik noch hörbar.' : 'Die Musik ist kaum noch zu hören.');
+  }
+  function check() {
+    const d = diff();
+    if (d < 6) out.replaceChildren(feedback('bad', 'Die Musik ist zu laut, die Sprache geht unter. Senke die Musikspur.'));
+    else if (d < 12) out.replaceChildren(feedback('bad', 'Fast. Für Sprache mit Musik darf der Abstand größer sein, damit auch Hörer mit Lautsprecher oder in lauter Umgebung alles verstehen.'));
+    else if (d > 25) out.replaceChildren(feedback('bad', 'Jetzt ist die Musik fast verschwunden. Hebe sie etwas an, damit sie noch als Untermalung wirkt.'));
+    else { out.replaceChildren(feedback('ok', 'Gut abgemischt: Die Sprache bleibt verständlich, die Musik unterstützt nur. In BandLab regelst du das an der Spurlautstärke der Musikspur.')); markDone('k3-mix', true); }
+  }
+  [v, m].forEach(x => x.addEventListener('input', upd)); upd();
+}
+
+/* ---------- Praxis: Format-Entscheider ---------- */
+function wDecider(root) {
+  reg('p-fmt');
+  const OPT = {
+    wav: ['WAV', 'ok', 'BandLab-Web importiert WAV direkt. Eine Konvertierung ist nicht nötig. Lange Aufnahmen sind allerdings groß (ca. 10 MB pro Minute Stereo).'],
+    mp3: ['MP3', 'ok', 'BandLab-Web importiert MP3 direkt. Sie ist verlustbehaftet. Wenn du noch ein WAV-Original hast, arbeite lieber damit. Erneut als MP3 exportieren würde die Qualität weiter senken.'],
+    m4a: ['M4A (z. B. Smartphone-Aufnahme)', 'ok', 'BandLab-Web importiert M4A direkt. M4A enthält meist AAC und ist verlustbehaftet. Für die Weiterarbeit ist das in Ordnung.'],
+    aac: ['AAC', 'ok', 'AAC steht in der Importliste von BandLab-Web (dort als „ACC“ geschrieben). Konvertierung ist nicht nötig.'],
+    ogg: ['OGG', 'ok', 'OGG steht in der Importliste von BandLab-Web. Konvertierung ist nicht nötig.'],
+    flac: ['FLAC', 'no', 'FLAC steht nicht in der Importliste von BandLab-Web. Öffne die Datei in Audacity und exportiere eine WAV-Kopie (Kapitel 2). Das Original behältst du.'],
+    video: ['Video (MP4, MOV …)', 'warn', 'MP4 steht in der Importliste. Bei anderen Videoformaten ist der sichere Weg: in Audacity öffnen (dafür ist meist FFmpeg nötig), als WAV exportieren und die WAV importieren.'],
+    other: ['Anderes Format (z. B. WMA)', 'no', 'Was nicht in der Importliste steht, konvertierst du: in Audacity öffnen (evtl. mit FFmpeg) und als WAV exportieren.'],
+    unknown: ['Ich weiß es nicht', 'warn', 'Blende im Explorer die Dateiendungen ein (Reiter Ansicht › Dateinamenerweiterungen) und schaue in den Eigenschaften unter „Details“ nach. Wähle dann das passende Format hier aus.']
+  };
+  const sel = h('select', { id: 'd-sel' }, h('option', { value: '' }, 'Bitte wählen…'), Object.keys(OPT).map(k => h('option', { value: k }, OPT[k][0])));
+  const out = h('div', { 'aria-live': 'polite' });
+  root.append(h('div', { class: 'ctrls' }, h('label', {}, 'Meine Datei ist eine …', sel)), out,
+    h('p', { class: 'small' }, 'Grundlage ist die BandLab-Hilfe zu Import- und Exportformaten (siehe Quellen).'));
+  sel.addEventListener('change', () => {
+    const o = OPT[sel.value]; if (!o) { out.replaceChildren(); return; }
+    const head = o[1] === 'ok' ? 'Import direkt möglich.' : o[1] === 'no' ? 'Erst konvertieren.' : 'Prüfen.';
+    out.replaceChildren(feedback(o[1] === 'ok' ? 'ok' : o[1] === 'no' ? 'bad' : 'neu', '<strong>' + head + '</strong> ' + o[2]));
+    markDone('p-fmt');
+  });
+}
+
+/* =====================================================================
+   3e) Abschlusstest (20 Fragen)
+   ===================================================================== */
+const TQ = [
+  /* --- Formate --- */
+  { a: 'Formate', t: 's', q: 'Welches dieser Formate ist unkomprimiert?', o: ['MP3', 'WAV', 'AAC', 'M4A'], c: 1, why: 'WAV speichert die PCM-Rohdaten unkomprimiert. M4A ist ein Container, meist mit AAC.' },
+  { a: 'Formate', t: 's', q: 'FLAC ist …', o: ['verlustfrei komprimiert', 'verlustbehaftet komprimiert', 'unkomprimiert', 'ein Container für AAC'], c: 0, why: 'FLAC verkleinert die Datei, ohne Information zu verlieren.' },
+  { a: 'Formate', t: 's', q: 'Wie groß ist eine Minute Stereo-WAV (44,1 kHz, 16 Bit) etwa?', o: ['ca. 1 MB', 'ca. 10 MB', 'ca. 50 MB', 'ca. 100 MB'], c: 1, why: '44.100 × 2 Byte × 2 Kanäle × 60 s = 10.584.000 Byte, also rund 10 MB.' },
+  { a: 'Formate', t: 's', q: 'Was stimmt für M4A?', o: ['Es ist ein Codec wie MP3.', 'Es ist ein Container, der meist AAC enthält.', 'Es ist immer verlustfrei.', 'Kein Programm kann es abspielen.'], c: 1, why: 'M4A verpackt Audiodaten, meist im AAC-Codec.' },
+  { a: 'Formate', t: 'm', q: 'Welche Formate sind verlustbehaftet? (mehrere möglich)', o: ['MP3', 'WAV', 'AAC', 'FLAC'], c: [0, 2], why: 'MP3 und AAC entfernen Information dauerhaft. WAV und FLAC sind verlustfrei.' },
+  { a: 'Formate', t: 's', q: 'Wie groß ist eine Minute Sprache als MP3 mit 128 kbit/s etwa?', o: ['ca. 100 KB', 'ca. 1 MB', 'ca. 10 MB', 'ca. 100 MB'], c: 1, why: '128.000 bit/s ÷ 8 × 60 s ≈ 960.000 Byte, also etwa 0,9 MB.' },
+  { a: 'Formate', t: 's', q: 'Welches Arbeitsformat wählst du, wenn du eine Aufnahme mehrfach bearbeiten willst?', o: ['MP3 mit niedriger Bitrate', 'WAV', 'AAC in kleinster Qualität', 'Es ist egal'], c: 1, why: 'WAV ist verlustfrei, jede Bearbeitung startet mit voller Qualität.' },
+  /* --- Konvertierung --- */
+  { a: 'Konvertierung', t: 's', q: 'Du benennst interview.wav in interview.mp3 um. Was ist passiert?', o: ['Die Datei ist jetzt eine MP3.', 'Nur der Name hat sich geändert, die Daten sind weiterhin WAV.', 'Die Datei ist jetzt verlustfrei komprimiert.', 'Die Datei lässt sich nie wieder öffnen.'], c: 1, why: 'Konvertieren heißt, die Daten neu zu kodieren. Umbenennen ändert nur das Etikett.' },
+  { a: 'Konvertierung', t: 's', q: 'BandLab-Web importiert FLAC nicht. Was ist der sinnvolle Weg?', o: ['In Audacity als WAV exportieren, dann die WAV importieren', 'Die Endung in .mp3 ändern', 'Die FLAC-Datei mehrfach hochladen', 'Aufgeben'], c: 0, why: 'Audacity liest FLAC, die WAV-Kopie ist verlustfrei und in BandLab importierbar.' },
+  { a: 'Konvertierung', t: 's', q: 'Wie vermeidest du Generationsverlust?', o: ['Immer vom verlustfreien Original ausgehen und verlustbehaftet nur einmal am Ende kodieren', 'Eine MP3 immer wieder als MP3 speichern', 'Die Bitrate bei jeder Runde halbieren', 'Nach jeder Runde in WAV umwandeln'], c: 0, why: 'Verlorene Information kommt nicht zurück. Deshalb einmal, am Ende, aus dem besten Original.' },
+  { a: 'Konvertierung', t: 's', q: 'In Audacity fehlt M4A beim Export. Wahrscheinlichste Ursache?', o: ['FFmpeg ist nicht installiert.', 'Die Aufnahme ist zu lang.', 'Der Rechner ist zu langsam.', 'M4A gibt es nicht mehr.'], c: 0, why: 'Laut Audacity-Handbuch brauchen einige Formate, darunter M4A, die FFmpeg-Bibliothek.' },
+  { a: 'Konvertierung', t: 's', q: 'Du exportierst eine Mono-Sprachaufnahme als Stereo-WAV. Folge?', o: ['Doppelte Dateigröße bei gleichem Inhalt', 'Doppelt so gute Qualität', 'Halbe Dateigröße', 'Keine Folge'], c: 0, why: 'Zwei identische Kanäle bedeuten doppelt so viele Daten, ohne Klanggewinn.' },
+  { a: 'Konvertierung', t: 's', q: 'Welcher Dateiname ist am sinnvollsten?', o: ['neu final final(2).wav', 'podcast_sprache_take01_roh.wav', 'Aufnahme äöü !!.wav', 'aufnahme.wav'], c: 1, why: 'Projekt, Inhalt, Version und Status sind erkennbar, ohne Leerzeichen und Sonderzeichen.' },
+  /* --- BandLab --- */
+  { a: 'BandLab', t: 's', q: 'Welche Formate importiert BandLab-Web laut Hilfe?', o: ['MP3, WAV, M4A, AAC, OGG (u. a.)', 'Nur WAV', 'FLAC und WAV', 'Alle Formate'], c: 0, why: 'FLAC steht nicht in der Importliste der Web-Version.' },
+  { a: 'BandLab', t: 's', q: 'Wie teilst du eine Region am Abspielkopf?', o: ['Rechtsklick › Slice oder Taste S', 'Taste Entf', 'Rechtsklick › Merge', 'Fade-Griff ziehen'], c: 0, why: 'Slice teilt, Merge verbindet, Entf löscht.' },
+  { a: 'BandLab', t: 's', q: '„Fade-Griffe an Regionsanfang und -ende können Klicken an Schnittstellen beseitigen.“', o: ['Richtig', 'Falsch'], c: 0, why: 'So beschreibt es die BandLab-Hilfe. Ein Fade blendet weich ein oder aus.' },
+  { a: 'BandLab', t: 's', q: 'In welchen Formaten gibt BandLab-Web einen Mixdown aus?', o: ['MP3 und FLAC', 'M4A oder WAV (16 Bit, 44,1 kHz)', 'Nur MP3', 'Nur OGG'], c: 1, why: 'Für MP3 exportierst du WAV und konvertierst danach in Audacity.' },
+  { a: 'BandLab', t: 's', q: 'Was ist eine Region?', o: ['Ein Effekt', 'Ein Audioabschnitt auf einer Spur, den du einzeln bearbeiten kannst', 'Ein Dateiformat', 'Das Projektmenü'], c: 1, why: 'Regionen lassen sich einzeln schneiden, verschieben, löschen und faden.' },
+  { a: 'BandLab', t: 'm', q: 'Welche Aussagen zu Projekt und Export stimmen? (mehrere möglich)', o: ['Ein Projekt darf bis zu 15 Minuten lang sein.', 'Beliebige Abschnitte lassen sich einzeln exportieren.', 'Bis zu 16 Spuren sind ohne Membership möglich.', 'Der Web-Export erzeugt direkt MP3.'], c: [0, 2], why: 'Laut BandLab-Hilfe: 15 Minuten und 16 Spuren. Exportiert wird immer das ganze Projekt, und zwar als M4A oder WAV.' },
+  { a: 'BandLab', t: 's', q: 'Die Musikspur übertönt die Sprache. Was tust du zuerst?', o: ['Die Lautstärke der Musikspur senken', 'Die Sprache löschen', 'Als MP3 exportieren', 'Die Dateiendung ändern'], c: 0, why: 'Jede Spur hat ihre eigene Lautstärke. Die Sprache soll immer klar im Vordergrund stehen.' }
+];
+const AREA_CH = { Formate: 'k1', Konvertierung: 'k2', BandLab: 'k3' };
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function buildTest() {
+  reg('test');
+  const root = $('#testRoot'); root.replaceChildren();
+  if (state.test) root.append(h('div', { class: 'fb neu' }, h('span', { html: icon('info') }), h('div', {}, h('p', {}, 'Letztes Ergebnis: ' + state.test.score + ' von ' + state.test.total + ' Punkten.'))));
+  const qs = TQ.map((q, i) => {
+    const order = shuffle(q.o.map((_, k) => k)), name = 'tq' + i;
+    const inputs = order.map(k => h('input', { type: q.t === 'm' ? 'checkbox' : 'radio', name, value: k }));
+    const box = h('div', { class: 'qtest' }, h('fieldset', {}, h('legend', {}, 'Frage ' + (i + 1) + ' von ' + TQ.length + ': ' + q.q),
+      order.map((k, j) => h('label', {}, inputs[j], h('span', {}, q.o[k])))));
+    return { q, inputs, order, box };
+  });
+  const res = h('div', { 'aria-live': 'polite', tabindex: -1 });
+  const submit = h('button', { type: 'button', class: 'btn', onclick: evaluate }, 'Test auswerten');
+  root.append(res, ...qs.map(x => x.box), h('div', { class: 'btnrow' }, submit), h('div', { id: 'testMsg', 'aria-live': 'polite' }));
+  function chosen(x) { return x.inputs.filter(i => i.checked).map(i => +i.value); }
+  function evaluate() {
+    const miss = qs.findIndex(x => chosen(x).length === 0);
+    if (miss >= 0) { $('#testMsg').replaceChildren(feedback('neu', 'Bitte beantworte zuerst Frage ' + (miss + 1) + '.')); qs[miss].inputs[0].focus(); return; }
+    $('#testMsg').replaceChildren();
+    const by = {}; let score = 0;
+    qs.forEach(x => {
+      const q = x.q, ch = chosen(x).sort(), right = [].concat(q.c).sort(), ok = ch.length === right.length && ch.every((v, i) => v === right[i]);
+      by[q.a] = by[q.a] || { s: 0, n: 0 }; by[q.a].n++; if (ok) { score++; by[q.a].s++; }
+      x.inputs.forEach(i => { i.disabled = true; });
+      x.box.classList.add(ok ? 'is-right' : 'is-wrong');
+      x.box.append(feedback(ok ? 'ok' : 'bad', ok ? q.why : 'Richtig ist: <strong>' + right.map(k => q.o[k]).join(' · ') + '</strong>', ok ? '' : q.why));
+    });
+    submit.disabled = true;
+    state.test = { score, total: TQ.length, by }; save(); markDone('test', score / TQ.length >= 0.7);
+    const pct = Math.round(score / TQ.length * 100);
+    res.replaceChildren(h('div', { class: 'step goal' }, h('div', { class: 'res' }, score + ' / ' + TQ.length),
+      h('p', {}, pct >= 70 ? 'Gut gemacht: Du hast den Richtwert von 70 % erreicht.' : 'Der Richtwert von 70 % ist noch nicht erreicht. Schau dir die Bereiche mit den meisten Fehlern noch einmal an.'),
+      h('ul', {}, Object.keys(by).map(a => h('li', {}, a + ': ' + by[a].s + ' von ' + by[a].n + ' richtig' + (by[a].s < by[a].n ? ' → ' : ''), by[a].s < by[a].n ? h('button', { type: 'button', class: 'btn ghost', onclick: () => show(AREA_CH[a]) }, 'Kapitel wiederholen') : null))),
+      h('div', { class: 'btnrow' }, h('button', { type: 'button', class: 'btn', onclick: buildTest }, 'Test wiederholen'))));
+    res.focus(); res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+/* =====================================================================
+   3f) Start: Kacheln, gespeicherte Eingaben, Start
+   ===================================================================== */
+function initStart() {
+  const T = [['k1', 'Kapitel 1', 'Audio-Dateiformate: WAV, MP3, AAC, M4A, FLAC vergleichen und wählen.'],
+    ['k2', 'Kapitel 2', 'Konvertierung unter Windows mit Audacity, Fehlerquellen, Dateiorganisation.'],
+    ['k3', 'Kapitel 3', 'BandLab: importieren, schneiden, Lautstärke, Fades, mehrere Spuren, Export.'],
+    ['praxis', 'Praxisaufgabe', 'Deine Aufnahme: beurteilen, konvertieren, bearbeiten, exportieren.'],
+    ['test', 'Abschlusstest', '20 Fragen zu allen drei Lernbereichen.']];
+  $('#pathTiles').append(...T.map(t => h('div', { class: 'tile' }, h('h4', {}, t[1]), h('p', {}, t[2]), h('button', { type: 'button', class: 'btn', onclick: () => show(t[0]) }, 'Öffnen'))));
+  $('#resetBtn').addEventListener('click', () => { if (confirm('Lernstand wirklich zurücksetzen?')) { state = { done: {}, score: {}, checks: {}, notes: {}, test: null }; save(); location.reload(); } });
+}
+function initInputs() {
+  $$('input[data-check]').forEach(cb => { cb.checked = !!state.checks[cb.dataset.check]; cb.addEventListener('change', () => { state.checks[cb.dataset.check] = cb.checked; save(); afterCheck(); }); });
+  $$('textarea[data-note]').forEach(t => { t.value = state.notes[t.dataset.note] || ''; t.addEventListener('input', () => { state.notes[t.dataset.note] = t.value; save(); }); });
+  reg('p-check'); reg('k1-transfer'); reg('k2-transfer'); reg('k3-transfer');
+  afterCheck();
+  const sw = $('#szWav'), sm = $('#szMp3'), so = $('#szOut');
+  function sz() { const a = parseFloat(sw.value), b = parseFloat(sm.value); so.textContent = a > 0 && b > 0 ? 'Die WAV ist etwa ' + de(a / b, 1) + '-mal so groß wie die MP3.' : 'Trage beide Werte ein.'; }
+  [sw, sm].forEach(x => x.addEventListener('input', sz));
+}
+function afterCheck() {
+  const n = $$('#pCrit input').filter(c => c.checked).length;
+  $('#pCount').textContent = n + ' von 10 Kriterien erfüllt.';
+  n === 10 ? markDone('p-check', true) : unmark('p-check');
+  [['k1', 3], ['k2', 3], ['k3', 4]].forEach(([k, m]) => {
+    const c = $$('input[data-check^="' + k + '-t"]').filter(x => x.checked).length;
+    c === m ? markDone(k + '-transfer', true) : unmark(k + '-transfer');
+  });
+}
+
+document.addEventListener('click', e => {
+  const go = e.target.closest('[data-go]'); if (go) { show(go.dataset.go); return; }
+  const jp = e.target.closest('[data-jump]'); if (jp) { const t = document.getElementById(jp.dataset.jump); if (t) { t.scrollIntoView(); const hh = $('h3', t); if (hh) { hh.setAttribute('tabindex', '-1'); hh.focus({ preventScroll: true }); } } return; }
+  const ch = e.target.closest('.chips a'); if (ch) { e.preventDefault(); const t = document.getElementById(ch.getAttribute('href').slice(1)); if (t) { t.scrollIntoView(); const hh = $('h3', t); if (hh) { hh.setAttribute('tabindex', '-1'); hh.focus({ preventScroll: true }); } } }
+});
+$('#printBtn').addEventListener('click', () => window.print());
+$('#menuBtn').addEventListener('click', () => { const o = $('#side').classList.toggle('open'); $('#menuBtn').setAttribute('aria-expanded', String(o)); });
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1); if (VIEWS.some(v => v.id === id)) show(id); });
+
+load();
+buildNav();
+initGlossary();
+mountAll();
+buildTest();
+initStart();
+initHero();
+initInputs();
+updateProgress();
+{ const id = location.hash.slice(1); show(VIEWS.some(v => v.id === id) ? id : 'start'); }
+</script>
+</body>
+</html>
